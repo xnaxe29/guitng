@@ -9,3 +9,30 @@ Then copy the "parameter_file.dat" on any random directory (which is accesible t
 guitng
 
 on the terminal
+
+
+Required python modules - 
+
+requests
+h5py
+matplotlib
+numpy
+from npy_append_array import NpyAppendArray
+webbrowser
+urllib.request
+from PIL import Image
+scipy
+glob
+imageio
+sys
+os
+unicodedata
+re
+time
+pathlib
+pylab
+from mpl_toolkits.axes_grid1 make_axes_locatable
+astropy
+ast
+
+
