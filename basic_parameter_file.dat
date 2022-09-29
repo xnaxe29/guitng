@@ -1,0 +1,41 @@
+Simulation: TNG50-1
+Snapshot: 99
+GalaxyID: 572125
+First_snapshot_number: 98
+clrmap: inferno
+bins_for_hist: 100
+window_size: 2000
+fontsize: 30
+limiting_velocity: 400
+#
+#
+#
+#
+#
+#
+#
+#
+#BASIC KEYS FOR DYNAMIC SLIDER AND BUTTON PLACEMENTS
+#THE FOUR KEYS INDICATE: [X_AXIS, Y_AXIS, LENGTH, BREADTH], ALL TAKING VALUES FROM 0 to 1
+pos_check_button_for_showing_rings_and_bh: [0.05, 0.7, 0.1, 0.15]
+pos_radio_button_for_changing_parameters: [0.05, 0.4, 0.1, 0.3]
+pos_button_for_making_movie: [0.05, 0.3, 0.1, 0.02]
+pos_radio_button_for_changing_colorbar_scale: [0.05, 0.1, 0.1, 0.15]
+pos_slider_for_moving_through_snapshots: [0.15, 0.01, 0.65, 0.05]
+pos_slider_for_zooming_in_out: [0.15, 0.9, 0.65, 0.05]
+min_zoom_allowed: 1
+max_zoom_allowed: 500
+init_zoom_val: 200
+vyg_ring_color: red
+vyg_ring_linewidth: 3
+vyg_ring_linestyle: -
+subhalo_ring_color: green
+subhalo_ring_linewidth: 1
+subhalo_ring_linestyle: --
+black_hole_color: cyan
+black_hole_markerstyle: *
+black_hole_markersize: 10
+black_hole_plot_alpha: 0.5
+movie_dpi: 100
+movie_interval: 1
+movie_dps: 1

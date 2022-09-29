@@ -1,0 +1,7 @@
+Simulation: TNG50-1
+Snapshot: 99
+GalaxyID: 602133
+First_snapshot_number: 80
+clrmap: inferno
+bins_for_hist: 100
+window_size: 200
