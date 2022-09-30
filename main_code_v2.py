@@ -45,6 +45,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.ticker as ticker
 from matplotlib.animation import FuncAnimation
 import matplotlib.animation as animation
+from matplotlib.offsetbox import  OffsetImage, AnnotationBbox
+import matplotlib.image as image
+
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 import ast
@@ -106,6 +109,13 @@ with open(str(parameter_file_string_base)) as f:
 				(key, val) = line.split()
 				key = key.replace(':', '').replace('-', '').lower()
 				initial_guesses[str(key)] = val
+
+logo1=image.imread(str(sys.argv[2]) + '/nrf_logo_1.png')
+logo2=image.imread(str(sys.argv[2]) + '/kasi_1.png')
+logo3=image.imread(str(sys.argv[2]) + '/kasi_2.png')
+addLogo1 = OffsetImage(logo1, zoom=0.13*1.3)
+addLogo2 = OffsetImage(logo2, zoom=0.2*1.3)
+addLogo3 = OffsetImage(logo3, zoom=0.2*1.3)
 
 if (len(sys.argv)!=4):
 	print ("No parameter file given along command line. Searching current directory for parameter file.")
@@ -668,6 +678,14 @@ window_size_init = int(d['init_zoom_val'])
 fig, ax = plt.subplots()
 ax.cla()
 
+ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+ab3 = AnnotationBbox(addLogo3, (1.3, 0.4), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+ax.add_artist(ab1)
+ax.add_artist(ab2)
+ax.add_artist(ab3)
+
+
 rax = plt.axes(d['pos_check_button_for_showing_rings_and_bh'])
 axtime = plt.axes(d['pos_slider_for_moving_through_snapshots'])
 axzoom = plt.axes(d['pos_slider_for_zooming_in_out'])
@@ -704,8 +722,17 @@ def put_time_label(time_val, ax, window_size):
 	ax.set_ylabel(ylabel_str)
 	plt.draw()
 
-
 put_time_label(time_val_init, ax, window_size_init)
+
+def add_label(ax):
+	ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+	ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+	ab3 = AnnotationBbox(addLogo3, (1.3, 0.4), xycoords='axes fraction', box_alignment=(1.1,-0.1))
+	ax.add_artist(ab1)
+	ax.add_artist(ab2)
+	ax.add_artist(ab3)
+
+add_label(ax)
 
 check = CheckButtons(rax, ('Black Hole', 'Subhalo Rings'), (True, True))
 def func(label):
@@ -748,6 +775,8 @@ def update(val):
 
 	im2, circle_final = extra_plotting(ax, mv)
 	put_time_label(int(stime.val), ax, float(szoom.val))
+	add_label(ax)
+
 	def func(label):
 		if label == 'Black Hole':
 			im2.set_visible(not im2.get_visible())
@@ -804,6 +833,8 @@ def hzfunc9(label9):
 
 	im2, circle_final = extra_plotting(ax, mv)
 	put_time_label(int(stime.val), ax, float(szoom.val))
+	add_label(ax)
+	
 	def func(label):
 		if label == 'Black Hole':
 			im2.set_visible(not im2.get_visible())
@@ -847,6 +878,8 @@ def hzfunc7(label7):
 
 	im2, circle_final = extra_plotting(ax, mv)
 	put_time_label(int(stime.val), ax, float(szoom.val))
+	add_label(ax)
+	
 	def func(label):
 		if label == 'Black Hole':
 			im2.set_visible(not im2.get_visible())
@@ -896,6 +929,8 @@ def ani_frame():
 	im2_new, circle_final_new = extra_plotting(ax_new, mv)
 	put_time_label(int(stime.val), ax_new, float(szoom.val))
 	fig_new.set_size_inches([5,5])
+	title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
+	fig_new.suptitle(title_string, fontsize=size_of_font/3)
 	tight_layout()
 
 	def update_img(n):
@@ -953,6 +988,8 @@ ax.set_ylabel(ylabel_str)
 ax.set_xlim(-window_size_init,window_size_init)
 ax.set_ylim(-window_size_init,window_size_init)
 ax.set_aspect('equal')
+title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
+plt.title(title_string)
 plt.show()
 
 #######################SETTING 'X' AND 'Y' DIRECTION LIMITS AND LABELS#######################
