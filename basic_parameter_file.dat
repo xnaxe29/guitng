@@ -7,6 +7,7 @@ bins_for_hist: 100
 window_size: 2000
 fontsize: 30
 limiting_velocity: 400
+child_subhalo_count: 6
 #
 #
 #
@@ -38,4 +39,4 @@ black_hole_markersize: 10
 black_hole_plot_alpha: 0.5
 movie_dpi: 100
 movie_interval: 1
-movie_dps: 1
+movie_fps: 1

@@ -346,8 +346,9 @@ def particle_information_child_subhalos(sub_prog_url_cust):
 	print ('Sub Halo list - ')
 	sys.stdout.flush()
 	time.sleep(0.1)
-	for i in range(len(test)):
+	#for i in range(len(test)):
 	#for i in range(5):
+	for i in range(int(d['child_subhalo_count'])):
 		print (test[i]['url'])
 		sys.stdout.flush()
 		time.sleep(0.1)
@@ -957,8 +958,9 @@ def ani_frame():
 		put_time_label(int(n), ax_new, float(szoom.val))
 		return im_new,
 
-	ani = animation.FuncAnimation(fig_new,update_img,(int(snap_array.min()), int(snap_array.max())),interval=int(d['movie_interval']))
-	writer = animation.writers['ffmpeg'](fps=int(d['movie_dps']))
+	frame_list = np.arange(int(snap_array.min()), int(snap_array.max())+1, 1)
+	ani = animation.FuncAnimation(fig_new,update_img,frames=frame_list, interval=int(d['movie_interval']))
+	writer = animation.writers['ffmpeg'](fps=int(d['movie_fps']))
 	ani.save(movie_name, writer=writer,dpi=dpi)
 	plt.close(fig_new)
 	return ani
