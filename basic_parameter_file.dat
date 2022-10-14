@@ -8,6 +8,7 @@ window_size: 2000
 fontsize: 30
 limiting_velocity: 400
 child_subhalo_count: 6
+#storage_directory: /Users/adarshranjan/Desktop/main_projects/VYG_Project/GUI/blah_blah
 #
 #
 #
