@@ -60,7 +60,7 @@ time.sleep(0.1)
 print ("\n")
 
 #Setting up cosmology
-cosmo = FlatLambdaCDM(H0=67.8 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.308)
+cosmo = FlatLambdaCDM(H0=67.74 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3089)
 
 #Some random formatting code
 underline = '\033[4m'
