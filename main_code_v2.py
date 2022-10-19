@@ -8,6 +8,7 @@ import webbrowser
 import urllib.request
 from PIL import Image
 from scipy import misc
+from scipy.stats import binned_statistic_2d
 import glob
 import imageio
 import matplotlib.image as mpimg
@@ -265,13 +266,14 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 		catch_error_2 = f.get('PartType4')
 		catch_error_3 = f.get('PartType5')
 		catch_error_4 = f.get('PartType1')
+		scale_factor_tmp_idx = find_nearest_idx(snapshots_original, int(sub_prog_subhalo_central_galaxy['snap']))
+		scale_factor_tmp = scale_factor_original[scale_factor_tmp_idx]
 		
 		if (catch_error_1):
 			x = f['PartType0']['Coordinates'][:,0] - sub_prog_subhalo_central_galaxy['pos_x']
 			y = f['PartType0']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
 			dens = f['PartType0']['Masses'][:]*1e10
-			vel_gas = f['PartType0']['Velocities'][:]
-			print (vel_gas.min(), vel_gas.max())
+			vel_gas = f['PartType0']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			ie = f['PartType0']['InternalEnergy'][:]
 			ea = f['PartType0']['ElectronAbundance'][:]
 			vel_gas_x = np.zeros([vel_gas.shape[0]])
@@ -297,12 +299,9 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 			y2 = f['PartType4']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
 			stars = f['PartType4']['Masses'][:]*1e10
 			stellar_age = f['PartType4']['GFM_StellarFormationTime'][:]
-			#print (stellar_age.min(), stellar_age.max())
 			stellar_age_idx = np.searchsorted(scale_factor_original, stellar_age)
 			stellar_age_rev = cosmic_age_original[stellar_age_idx]
-			#stellar_age_rev = stellar_age
-			#print (stellar_age_rev.min(), stellar_age_rev.max())
-			vel_star = f['PartType4']['Velocities'][:]
+			vel_star = f['PartType4']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_star_x = np.zeros([vel_star.shape[0]])
 			vel_star_y = np.zeros([vel_star.shape[0]])
 			vel_star_z = np.zeros([vel_star.shape[0]])
@@ -335,7 +334,7 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 			y4 = f['PartType1']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
 			#dm_mass = f['PartType1']['Masses'][:]*1e10
 			dm_mass = np.zeros_like(x4)
-			vel_dm = f['PartType1']['Velocities'][:]
+			vel_dm = f['PartType1']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_dm_x = np.zeros([vel_dm.shape[0]])
 			vel_dm_y = np.zeros([vel_dm.shape[0]])
 			vel_dm_z = np.zeros([vel_dm.shape[0]])
@@ -695,9 +694,10 @@ for i in range(0,len(sub_prog_url_array)):
 	vyg_counter.append(np.array([(np.load(filename18[i].decode("utf-8"), allow_pickle=True))]))
 	stelar_age_rev = stelar_age[i][0] / stelar_mass[i][0]
 	vyg_st_mass = stelar_mass[i][0]
-	vyg_st_mass[stelar_age[i][0]>=1.] = 0
-
-	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age_rev, vyg_st_mass], dtype="object"))
+	vyg_st_mass[stelar_age[i][0]<=(np.nanmax(cosmic_age_original)-1.)] = np.nan
+	fracYoung = vyg_st_mass / stelar_mass[i][0]
+	print (np.nanmin(radial_vel_gas), np.nanmax(radial_vel_gas))
+	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age_rev, fracYoung], dtype="object"))
 
 
 #######################LOAD_PARTICLE_INFORMATION_FROM_FILE_FOR_PREOCESSING#######################
@@ -726,8 +726,32 @@ rax7 = fig.add_axes(d['pos_radio_button_for_changing_parameters'])
 rax9 = fig.add_axes(d['pos_radio_button_for_changing_colorbar_scale'])
 movie_button_ax = plt.axes(d['pos_button_for_making_movie'])
 
+'''
+str_for_param_selection = 5
+
+#im = ax.hist2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
+data, xedges, yedges  = np.histogram2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], normed=True)
+data = data.T
+#im = ax.hist2d(test_x[1:], test_y[1:], weights=data, bins=len(test_x), cmap=colormap_new, zorder=1)
+#im_cl = add_colorbar(im[3])
+#im = ax.imshow(data, interpolation='nearest', origin='lower', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+#im_cl = add_colorbar_lin(im)
+X, Y = np.meshgrid(xedges, yedges)
+im = ax.pcolormesh(X, Y, data*(bin_number**2))
+im_cl = add_colorbar_lin(im)
+
+#https://stackoverflow.com/questions/58937863/plot-average-of-scattered-values-in-2d-bins-as-a-histogram-hexplot
+H, xedges, yedges = np.histogram2d(data_x[mv][0], data_y[mv][0], bins = [bin_number, bin_number], weights = data_real[mv][str_for_param_selection])
+H_counts, xedges, yedges = np.histogram2d(data_x[mv][0], data_y[mv][0], bins = [bin_number, bin_number])
+H = H/H_counts
+
+im = ax.imshow(H, origin='lower',  cmap='RdBu', extent=[yedges[0], yedges[-1], xedges[0], xedges[-1]])
+im_cl = add_colorbar_lin(im)
+'''
+
 im = ax.hist2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
 im_cl = add_colorbar(im[3])
+
 
 def extra_plotting(ax, mv):
 	circle2 = plt.Circle((subhalo_cen_x[mv][0][vyg_counter[mv]], subhalo_cen_y[mv][0][vyg_counter[mv]]), subhalo_radius[mv][0][vyg_counter[mv]], color = str(d['vyg_ring_color']), fill=False, ls=str(d['vyg_ring_linestyle']), lw=int(d['vyg_ring_linewidth']), zorder=4)
@@ -1023,7 +1047,7 @@ ax.set_xlim(-window_size_init,window_size_init)
 ax.set_ylim(-window_size_init,window_size_init)
 ax.set_aspect('equal')
 title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
-plt.title(title_string)
+fig.suptitle(title_string)
 plt.show()
 
 #######################SETTING 'X' AND 'Y' DIRECTION LIMITS AND LABELS#######################

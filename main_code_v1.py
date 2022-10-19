@@ -270,12 +270,14 @@ def particle_information_halo(sub_prog_url_cust):
 		catch_error_2 = f.get('PartType4')
 		catch_error_3 = f.get('PartType5')
 		catch_error_4 = f.get('PartType1')
-		
+		scale_factor_tmp_idx = find_nearest_idx(snapshots_original, int(sub_prog_subhalo_central_galaxy['snap']))
+		scale_factor_tmp = scale_factor_original[scale_factor_tmp_idx]
+
 		if (catch_error_1):
 			x = sub_prog_subhalo['pos_x'] - f['PartType0']['Coordinates'][:,0]
 			y = sub_prog_subhalo['pos_y'] - f['PartType0']['Coordinates'][:,1]
 			dens = f['PartType0']['Masses'][:]*1e10
-			vel_gas = f['PartType0']['Velocities'][:]
+			vel_gas = f['PartType0']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			ie = f['PartType0']['InternalEnergy'][:]
 			ea = f['PartType0']['ElectronAbundance'][:]
 			vel_gas_x = np.zeros([vel_gas.shape[0]])
@@ -306,7 +308,7 @@ def particle_information_halo(sub_prog_url_cust):
 			stellar_age_rev = cosmic_age_original[stellar_age_idx]
 			#stellar_age_rev = stellar_age
 			#print (stellar_age_rev.min(), stellar_age_rev.max())
-			vel_star = f['PartType4']['Velocities'][:]
+			vel_star = f['PartType4']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_star_x = np.zeros([vel_star.shape[0]])
 			vel_star_y = np.zeros([vel_star.shape[0]])
 			vel_star_z = np.zeros([vel_star.shape[0]])
@@ -338,7 +340,7 @@ def particle_information_halo(sub_prog_url_cust):
 			y4 = sub_prog_subhalo['pos_y'] - f['PartType1']['Coordinates'][:,1]
 			#dm_mass = f['PartType1']['Masses'][:]*1e10
 			dm_mass = np.zeros_like(x4)
-			vel_dm = f['PartType1']['Velocities'][:]
+			vel_dm = f['PartType1']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_dm_x = np.zeros([vel_dm.shape[0]])
 			vel_dm_y = np.zeros([vel_dm.shape[0]])
 			vel_dm_z = np.zeros([vel_dm.shape[0]])

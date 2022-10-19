@@ -1,7 +1,9 @@
 Simulation: TNG50-1
 Snapshot: 99
 GalaxyID: 602133
-First_snapshot_number: 80
+First_snapshot_number: 90
 clrmap: inferno
 bins_for_hist: 100
 window_size: 200
+#storage_directory: /Users/adarshranjan/Desktop/main_projects/VYG_Project/GUI/blah_blah
+child_subhalo_count: 5
