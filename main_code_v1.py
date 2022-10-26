@@ -270,7 +270,7 @@ def particle_information_halo(sub_prog_url_cust):
 		catch_error_2 = f.get('PartType4')
 		catch_error_3 = f.get('PartType5')
 		catch_error_4 = f.get('PartType1')
-		scale_factor_tmp_idx = find_nearest_idx(snapshots_original, int(sub_prog_subhalo_central_galaxy['snap']))
+		scale_factor_tmp_idx = find_nearest_idx(snapshots_original, int(sub_prog_subhalo['snap']))
 		scale_factor_tmp = scale_factor_original[scale_factor_tmp_idx]
 
 		if (catch_error_1):
@@ -406,8 +406,8 @@ ylabel_str = str(r'$\rm \Delta y$ [ckpc/h]')
 size_of_font = int(d['fontsize'])
 vel_limit = float(d['limiting_velocity'])
 
-hzdict7 = {'gas_density': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_st_mass': 10}
-hzdict8 = {'gas_density': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_st_mass': 1}
+hzdict7 = {'gas_dens': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_mass': 10}
+hzdict8 = {'gas_dens': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_mass': 1}
 
 
 #######################OBTAIN_PARAMETER_INFORMATION#######################
@@ -825,7 +825,7 @@ radio9.on_clicked(hzfunc9)
 # GUI Radio button for moving throught different particle information like Gas Density,-
 #-Temperature, Stellar density, Gas velocity, stellar velocity, Gas radial velocity, Stellar radial velocity
 
-radio7 = RadioButtons(rax7, ('gas_density', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_st_mass'))
+radio7 = RadioButtons(rax7, ('gas_dens', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_mass'))
 def hzfunc7(label7):
 	global im_cl
 	mv = int(int(np.floor(stime.val)) - snap_array.min()-1)
@@ -963,7 +963,7 @@ ax.set_xlim(-window_size_init,window_size_init)
 ax.set_ylim(-window_size_init,window_size_init)
 ax.set_aspect('equal')
 title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
-plt.title(title_string)
+fig.suptitle(title_string)
 plt.show()
 
 #######################SETTING 'X' AND 'Y' DIRECTION LIMITS AND LABELS#######################

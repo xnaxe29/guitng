@@ -313,7 +313,7 @@ def particle_information_halo(sub_prog_url_cust):
 
 	cutout_request = {'gas':'Coordinates,Masses,InternalEnergy,ElectronAbundance,Velocities', 'stars':'Coordinates,Masses,Velocities,GFM_StellarFormationTime', 'dm':'Coordinates,Velocities', 'bhs':'Coordinates,Masses,Velocities'}
 	cutout = get(sub_prog_halo_url+"cutout.hdf5", cutout_request)
-	x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, stellar_age_rev, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z = ([] for i in range(27))
+	x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, stellar_age_rev, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, vyg_st_mass, fracyoung_rev = ([] for i in range(29))
 	with h5py.File(cutout,'r') as f:
 		catch_error_1 = f.get('PartType0')
 		catch_error_2 = f.get('PartType4')
@@ -369,6 +369,11 @@ def particle_information_halo(sub_prog_url_cust):
 				vel_star_y[i] = sub_prog_subhalo['vel_y'] - vel_star[i][1]
 				vel_star_z[i] = sub_prog_subhalo['vel_z'] - vel_star[i][2]
 				
+			vyg_st_mass = stars
+			vyg_st_mass[stellar_age_rev<=(np.nanmax(cosmic_age_original)-1.)] = np.nan
+			fracyoung = float(np.nansum(vyg_st_mass) / np.nansum(stars))
+			fracyoung_rev = list(np.full([len(stars)], fill_value=fracyoung))
+
 			mask_2 = (np.array(x2)>-vel_limit) & (np.array(x2)<vel_limit) & (np.array(y2)>-vel_limit) & (np.array(y2)<vel_limit) & (np.array(z2)>-vel_limit) & (np.array(z2)<vel_limit)
 			x2 = x2[mask_2]
 			y2 = y2[mask_2]
@@ -377,7 +382,9 @@ def particle_information_halo(sub_prog_url_cust):
 			vel_star_x = vel_star_x[mask_2]
 			vel_star_y = vel_star_y[mask_2]
 			vel_star_z = vel_star_z[mask_2]
-			
+			vyg_st_mass = vyg_st_mass[mask_2]
+			fracyoung_rev = fracyoung_rev[mask_2]
+
 		if (catch_error_3):
 			print ('BH Detected')
 			sys.stdout.flush()
@@ -414,7 +421,7 @@ def particle_information_halo(sub_prog_url_cust):
 			vel_dm_y = vel_dm_y[mask_4]
 			vel_dm_z = vel_dm_z[mask_4]
 
-	return (x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, center_subhalo_x, center_subhalo_y, center_subhalo_z, radius_subhalo, stellar_age_rev)
+	return (x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, center_subhalo_x, center_subhalo_y, center_subhalo_z, radius_subhalo, stellar_age_rev, vyg_st_mass, fracyoung_rev)
 
 #######################GET_PARTICLE_INFORMATION_FROM_TNG_DATA#######################
 
@@ -463,8 +470,8 @@ ylabel_str = str(r'$\rm \Delta y$ [ckpc/h]')
 size_of_font = int(d['fontsize'])
 vel_limit = float(d['limiting_velocity'])
 
-hzdict7 = {'gas_dens': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_mass': 10}
-hzdict8 = {'gas_dens': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_mass': 1}
+hzdict7 = {'gas_dens': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_st_mass': 10, 'vyg_fraction': 11}
+hzdict8 = {'gas_dens': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_st_mass': 1, 'vyg_fraction': 1}
 
 
 #######################OBTAIN_PARAMETER_INFORMATION#######################
@@ -578,6 +585,8 @@ filename17 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename19 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename18 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename20 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename21 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename22 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 
 linkname = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 
@@ -614,6 +623,8 @@ for i in range(len(sub_prog_url_array)):
 	filename17[i] = (str(str_dir_name) + "_radius_subhalo_" + str(i) + ".npy")
 	filename19[i] = (str(str_dir_name) + "_stellar_age_" + str(i) + ".npy")
 	filename18[i] = (str(str_dir_name) + "_vyg_counter_" + str(i) + ".npy")
+	filename21[i] = (str(str_dir_name) + "_vyg_stellar_mass_" + str(i) + ".npy")
+	filename22[i] = (str(str_dir_name) + "_vyg_fraction_" + str(i) + ".npy")
 
 	if (path.exists(filename_x[i])):
 		print ("File exists")
@@ -624,7 +635,7 @@ for i in range(len(sub_prog_url_array)):
 		print (linkname[i].decode("utf-8"))
 		sys.stdout.flush()
 		time.sleep(0.1)
-		x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, subhalo_rad, st_age = particle_information_halo(linkname[i].decode("utf-8"))
+		x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, subhalo_rad, st_age, stellar_mass_vyg, youngfrac_vyg = particle_information_halo(linkname[i].decode("utf-8"))
 		
 		vyg_counter_s = 0
 		np.save(filename_x[i].decode("utf-8"), x)
@@ -659,6 +670,9 @@ for i in range(len(sub_prog_url_array)):
 		np.save(filename17[i].decode("utf-8"), subhalo_rad)
 		np.save(filename19[i].decode("utf-8"), st_age)
 		np.save(filename18[i].decode("utf-8"), vyg_counter_s)
+		np.save(filename21[i].decode("utf-8"), stellar_mass_vyg)
+		np.save(filename22[i].decode("utf-8"), youngfrac_vyg)
+
 
 #######################GET_PARTICLE_DATA_AND_SAVE_IT_IN_A_FILE#######################
 
@@ -678,9 +692,7 @@ stelar_age = []
 stelar_age_rev = []
 vyg_counter = []
 vyg_st_mass = []
-
-#global str_for_param_selection
-str_for_param_selection = 0
+vyg_fraction = []
 
 for i in range(0,len(sub_prog_url_array)):
 	data_x.append(np.array([(np.load(filename_x[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
@@ -717,11 +729,9 @@ for i in range(0,len(sub_prog_url_array)):
 	stelar_mass.append(np.array([(np.load(filename4[i].decode("utf-8"), allow_pickle=True))]))
 	stelar_age.append(np.array([(np.load(filename19[i].decode("utf-8"), allow_pickle=True))]))
 	vyg_counter.append(np.array([(np.load(filename18[i].decode("utf-8"), allow_pickle=True))]))
-	stelar_age_rev = stelar_age[i][0] / stelar_mass[i][0]
-	vyg_st_mass = stelar_mass[i][0]
-	vyg_st_mass[stelar_age[i][0]>=1.] = 0
-
-	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age_rev, vyg_st_mass], dtype="object"))
+	#vyg_st_mass.append(np.array([(np.load(filename21[i].decode("utf-8"), allow_pickle=True))]))
+	#vyg_fraction.append(np.array([(np.load(filename22[i].decode("utf-8"), allow_pickle=True))]))
+	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age, (np.load(filename21[i].decode("utf-8"), allow_pickle=True)), (np.load(filename22[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
 
 #######################LOAD_PARTICLE_INFORMATION_FROM_FILE_FOR_PREOCESSING#######################
 
@@ -729,6 +739,8 @@ for i in range(0,len(sub_prog_url_array)):
 #Initialize certain dynamic parameters to plot the base MATPLOTLIB window
 
 mv = 0
+str_for_param_selection = 0
+axis_to_use = 0
 time_val_init = snap_array.min()
 window_size_init = int(d['init_zoom_val'])
 fig, ax = plt.subplots()
@@ -806,7 +818,12 @@ def bh_func(im2, circle2):
 		fig.canvas.draw_idle()
 	check.on_clicked(func)
 
-plot_main(ax, data_x[mv][str_for_param_selection], data_y[mv][str_for_param_selection], data_z[mv][str_for_param_selection], data_real[mv][str_for_param_selection], plot_type='log')
+print (len(data_x[mv][axis_to_use]))
+print (len(data_y[mv][axis_to_use]))
+print (len(data_z[mv][axis_to_use]))
+print (len(data_real[mv][str_for_param_selection]))
+
+plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type='log')
 im2, circle2 = extra_plotting(ax, mv, subhalo_cen_x[mv][vyg_counter[mv]], subhalo_cen_y[mv][vyg_counter[mv]], subhalo_cen_z[mv][vyg_counter[mv]], subhalo_radius[mv][vyg_counter[mv]], data_x[mv][2], data_y[mv][2], data_z[mv][2])
 put_time_label(time_val_init, ax, window_size_init)
 add_label(ax)
@@ -899,7 +916,7 @@ radio9.on_clicked(hzfunc9)
 # GUI Radio button for moving throught different particle information like Gas Density,-
 #-Temperature, Stellar density, Gas velocity, stellar velocity, Gas radial velocity, Stellar radial velocity
 
-radio7 = RadioButtons(rax7, ('gas_dens', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_mass'))
+radio7 = RadioButtons(rax7, ('gas_dens', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_st_mass', 'vyg_fraction'))
 def hzfunc7(label7):
 	global im_cl
 	mv = int(int(np.floor(stime.val)) - snap_array.min()-1)
