@@ -23,10 +23,7 @@ def main():
 	file_object.close()
 	
 	#code_name = "/main_code_v1.py "
-	code_name = "/main_code_v1_rev.py "
-	#code_name = "/main_code_v2.py "
-	#code_name = "/main_code_v2_rev.py "
-	#code_name = "/main_code_v2_rev_3d.py "
+	code_name = "/main_code_v2.py "
 
 	global executable_string
 	if (len(sys.argv)!=2):

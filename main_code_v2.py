@@ -9,9 +9,11 @@ import urllib.request
 from PIL import Image
 from scipy import misc
 from scipy.stats import binned_statistic_2d
+from scipy.stats import binned_statistic_dd
 import glob
 import imageio
 import matplotlib.image as mpimg
+from mpl_toolkits import mplot3d
 from matplotlib.colors import LogNorm
 import scipy.ndimage as sp
 import sys
@@ -85,6 +87,54 @@ def find_nearest_idx(array,value):
 	return idx
 
 
+#######################ROTATION_MATRIX_FUNCTIONS#######################
+ 
+def Rx(theta):
+  return np.matrix([[ 1, 0           , 0           ],
+                   [ 0, np.cos(theta),-np.sin(theta)],
+                   [ 0, np.sin(theta), np.cos(theta)]])
+ 
+def Ry(theta):
+  return np.matrix([[ np.cos(theta), 0, np.sin(theta)],
+                   [ 0           , 1, 0           ],
+                   [-np.sin(theta), 0, np.cos(theta)]])
+ 
+def Rz(theta):
+  return np.matrix([[ np.cos(theta), -np.sin(theta), 0 ],
+                   [ np.sin(theta), np.cos(theta) , 0 ],
+                   [ 0           , 0            , 1 ]])
+
+
+def rotaion_matrix(val_x, val_y, val_z, phi_deg, theta_deg):
+	phi = np.radians(phi_deg)
+	theta = np.radians(theta_deg)
+	val_init = np.array([val_x, val_y, val_z]).T
+	R = Ry(theta) * Rz(phi) * Rx(0.0)
+	val_final = np.matmul(val_init, R)
+	val_x_new, val_y_new, val_z_new = val_final.T
+	return (val_x_new, val_y_new, val_z_new)
+	
+def rotaion_matrix_group(val_x_array, val_y_array, val_z_array, phi, theta):
+	val_x_array_rev = np.zeros([val_x_array.shape[0], val_x_array.shape[1]])
+	val_y_array_rev = np.zeros([val_x_array.shape[0], val_x_array.shape[1]])
+	val_z_array_rev = np.zeros([val_x_array.shape[0], val_x_array.shape[1]])
+	for i in range(val_x_array.shape[1]):
+		val_x_array_rev[:,i], val_y_array_rev[:,i], val_z_array_rev[:,i] = rotaion_matrix(val_x_array[:,i], val_y_array[:,i], val_z_array[:,i], phi, theta)
+	
+	return (val_x_array_rev, val_y_array_rev, val_z_array_rev)
+
+def rotaion_matrix_group_new(val_x_array, val_y_array, val_z_array, phi, theta):
+	val_x_array_rev = np.zeros([val_x_array.shape[0]])
+	val_y_array_rev = np.zeros([val_x_array.shape[0]])
+	val_z_array_rev = np.zeros([val_x_array.shape[0]])
+	#for i in range(val_x_array.shape[0]):
+	val_x_array_rev[:], val_y_array_rev[:], val_z_array_rev[:] = rotaion_matrix(val_x_array[:], val_y_array[:], val_z_array[:], phi, theta)
+	return (val_x_array_rev, val_y_array_rev, val_z_array_rev)
+
+#######################ROTATION_MATRIX_FUNCTIONS#######################
+
+
+
 snapshots_init_def = np.array([2, 3, 4, 6, 8, 11, 13, 17, 21, 25, 33, 40, 50, 59, 67, 72, 78, 84, 91, 99])
 scale_factor_init_def = np.array([0.0769, 0.0833, 0.0909, 0.1, 0.1111, 0.125, 0.1429, 0.1667, 0.2, 0.25, 0.3333, 0.4, 0.5, 0.5882, 0.6667, 0.7143, 0.7692, 0.8333, 0.9091, 1])
 redshift_init_def = np.array([12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1.5, 1, 0.7, 0.5, 0.4, 0.3, 0.2, 0.1, 0])
@@ -129,12 +179,14 @@ with open(str(parameter_file_string_base)) as f:
 				key = key.replace(':', '').replace('-', '').lower()
 				initial_guesses[str(key)] = val
 
+'''
 logo1=image.imread(str(sys.argv[2]) + '/nrf_logo_1.png')
 logo2=image.imread(str(sys.argv[2]) + '/kasi_1.png')
 logo3=image.imread(str(sys.argv[2]) + '/kasi_2.png')
 addLogo1 = OffsetImage(logo1, zoom=0.13*1.3)
 addLogo2 = OffsetImage(logo2, zoom=0.2*1.3)
 addLogo3 = OffsetImage(logo3, zoom=0.2*1.3)
+'''
 
 if (len(sys.argv)!=4):
 	print ("No parameter file given along command line. Searching current directory for parameter file.")
@@ -253,14 +305,14 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 	sub_prog_subhalo_central_galaxy = get(url_for_central_galaxy)
 	#main_data = get(url_for_data)
 	#cutout_request = {'gas':'Coordinates,Masses,InternalEnergy,ElectronAbundance,Velocities', 'stars':'Coordinates,Masses,Velocities', 'dm':'Coordinates,Masses,Velocities'}
-
 	sub_prog_subhalo_data = get(url_for_data)
 	center_subhalo_x = sub_prog_subhalo_data['pos_x'] - sub_prog_subhalo_central_galaxy['pos_x']
 	center_subhalo_y = sub_prog_subhalo_data['pos_y'] - sub_prog_subhalo_central_galaxy['pos_y']
+	center_subhalo_z = sub_prog_subhalo_data['pos_z'] - sub_prog_subhalo_central_galaxy['pos_z']
 	radius_subhalo = sub_prog_subhalo_data['halfmassrad']
 	cutout_request = {'gas':'Coordinates,Masses,InternalEnergy,ElectronAbundance,Velocities', 'stars':'Coordinates,Masses,Velocities,GFM_StellarFormationTime', 'dm':'Coordinates,Velocities', 'bhs':'Coordinates,Masses,Velocities'}
 	cutout = get(url_for_data+"cutout.hdf5", cutout_request)
-	x, y, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, stars, stellar_age_rev, vel_star_x, vel_star_y, vel_star_z, x3, y3, x4, y4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z = ([] for i in range(23))
+	x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, stellar_age_rev, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, vyg_st_mass, fracyoung_rev = ([] for i in range(29))
 	with h5py.File(cutout,'r') as f:
 		catch_error_1 = f.get('PartType0')
 		catch_error_2 = f.get('PartType4')
@@ -268,10 +320,10 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 		catch_error_4 = f.get('PartType1')
 		scale_factor_tmp_idx = find_nearest_idx(snapshots_original, int(sub_prog_subhalo_central_galaxy['snap']))
 		scale_factor_tmp = scale_factor_original[scale_factor_tmp_idx]
-		
 		if (catch_error_1):
 			x = f['PartType0']['Coordinates'][:,0] - sub_prog_subhalo_central_galaxy['pos_x']
 			y = f['PartType0']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
+			z = f['PartType0']['Coordinates'][:,2] - sub_prog_subhalo_central_galaxy['pos_z']
 			dens = f['PartType0']['Masses'][:]*1e10
 			vel_gas = f['PartType0']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			ie = f['PartType0']['InternalEnergy'][:]
@@ -284,9 +336,10 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 				vel_gas_y[i] = vel_gas[i][1] - sub_prog_subhalo_central_galaxy['vel_y']
 				vel_gas_z[i] = vel_gas[i][2] - sub_prog_subhalo_central_galaxy['vel_z']
 
-			mask_1 = (np.array(x)>-vel_limit) & (np.array(x)<vel_limit) & (np.array(y)>-vel_limit) & (np.array(y)<vel_limit)
+			mask_1 = (np.array(x)>-vel_limit) & (np.array(x)<vel_limit) & (np.array(y)>-vel_limit) & (np.array(y)<vel_limit) & (np.array(z)>-vel_limit) & (np.array(z)<vel_limit)
 			x = x[mask_1]
 			y = y[mask_1]
+			z = z[mask_1]
 			dens = dens[mask_1]
 			ie = ie[mask_1]
 			ea = ea[mask_1]
@@ -297,6 +350,7 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 		if (catch_error_2):
 			x2 = f['PartType4']['Coordinates'][:,0] - sub_prog_subhalo_central_galaxy['pos_x']
 			y2 = f['PartType4']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
+			z2 = f['PartType4']['Coordinates'][:,2] - sub_prog_subhalo_central_galaxy['pos_z']
 			stars = f['PartType4']['Masses'][:]*1e10
 			stellar_age = f['PartType4']['GFM_StellarFormationTime'][:]
 			stellar_age_idx = np.searchsorted(scale_factor_original, stellar_age)
@@ -310,28 +364,42 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 				vel_star_y[i] = vel_star[i][1] - sub_prog_subhalo_central_galaxy['vel_y']
 				vel_star_z[i] = vel_star[i][2] - sub_prog_subhalo_central_galaxy['vel_z']
 				
-			mask_2 = (np.array(x2)>-vel_limit) & (np.array(x2)<vel_limit) & (np.array(y2)>-vel_limit) & (np.array(y2)<vel_limit)
+			vyg_st_mass = stars
+			vyg_st_mass[stellar_age_rev<=(np.nanmax(cosmic_age_original)-1.)] = np.nan
+			if (np.nansum(stars)):
+				fracyoung = float(np.nansum(vyg_st_mass) / np.nansum(stars))
+			else:
+				fracyoung = 0.0
+			mask_2 = (np.array(x2)>-vel_limit) & (np.array(x2)<vel_limit) & (np.array(y2)>-vel_limit) & (np.array(y2)<vel_limit) & (np.array(z2)>-vel_limit) & (np.array(z2)<vel_limit)
 			x2 = x2[mask_2]
 			y2 = y2[mask_2]
+			z2 = z2[mask_2]
 			stars = stars[mask_2]
 			stellar_age = stellar_age[mask_2]
 			vel_star_x = vel_star_x[mask_2]
 			vel_star_y = vel_star_y[mask_2]
 			vel_star_z = vel_star_z[mask_2]
-			
+			vyg_st_mass = vyg_st_mass[mask_2]
+			fracyoung_rev = np.full([len(stars)], fill_value=fracyoung)
+			if (len(mask_2)>1):
+				fracyoung_rev = fracyoung_rev[mask_2.astype(np.int32)]
+
 		if (catch_error_3):
 			print ('BH Detected')
 			sys.stdout.flush()
 			time.sleep(0.1)
 			x3 = f['PartType5']['Coordinates'][:,0] - sub_prog_subhalo_central_galaxy['pos_x']
 			y3 = f['PartType5']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
-			mask_3 = (np.array(x3)>-vel_limit) & (np.array(x3)<vel_limit) & (np.array(y3)>-vel_limit) & (np.array(y3)<vel_limit)
+			z3 = f['PartType5']['Coordinates'][:,2] - sub_prog_subhalo_central_galaxy['pos_z']
+			mask_3 = (np.array(x3)>-vel_limit) & (np.array(x3)<vel_limit) & (np.array(y3)>-vel_limit) & (np.array(y3)<vel_limit) & (np.array(z3)>-vel_limit) & (np.array(z3)<vel_limit)
 			x3 = x3[mask_3]
 			y3 = y3[mask_3]
+			z3 = z3[mask_3]
 			
 		if (catch_error_4):
 			x4 = f['PartType1']['Coordinates'][:,0] - sub_prog_subhalo_central_galaxy['pos_x']
 			y4 = f['PartType1']['Coordinates'][:,1] - sub_prog_subhalo_central_galaxy['pos_y']
+			z4 = f['PartType1']['Coordinates'][:,2] - sub_prog_subhalo_central_galaxy['pos_z']
 			#dm_mass = f['PartType1']['Masses'][:]*1e10
 			dm_mass = np.zeros_like(x4)
 			vel_dm = f['PartType1']['Velocities'][:] * np.sqrt(scale_factor_tmp)
@@ -343,16 +411,16 @@ def retrieve_particle_data(url_for_data, url_for_central_galaxy):
 				vel_dm_y[i] = vel_dm[i][1] - sub_prog_subhalo_central_galaxy['vel_y']
 				vel_dm_z[i] = vel_dm[i][2] - sub_prog_subhalo_central_galaxy['vel_z']
 
-			mask_4 = (np.array(x4)>-vel_limit) & (np.array(x4)<vel_limit) & (np.array(y4)>-vel_limit) & (np.array(y4)<vel_limit)
+			mask_4 = (np.array(x4)>-vel_limit) & (np.array(x4)<vel_limit) & (np.array(y4)>-vel_limit) & (np.array(y4)<vel_limit) & (np.array(z4)>-vel_limit) & (np.array(z4)<vel_limit)
 			x4 = x4[mask_4]
 			y4 = y4[mask_4]
+			z4 = z4[mask_4]
 			dm_mass = dm_mass[mask_4]
 			vel_dm_x = vel_dm_x[mask_4]
 			vel_dm_y = vel_dm_y[mask_4]
 			vel_dm_z = vel_dm_z[mask_4]
 
-	return (x, y, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, x4, y4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, center_subhalo_x, center_subhalo_y, radius_subhalo, stellar_age_rev)
-
+	return (x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, center_subhalo_x, center_subhalo_y, center_subhalo_z, radius_subhalo, stellar_age_rev, vyg_st_mass, fracyoung_rev)
 
 def particle_information_child_subhalos(sub_prog_url_cust):
 	print ('\n')
@@ -365,12 +433,16 @@ def particle_information_child_subhalos(sub_prog_url_cust):
 	sub_prog_halo = get(sub_prog_halo_link)
 	counter_for_subhalos = int(sub_prog_halo['child_subhalos']['count'])
 	
-	x_tot, y_tot, dens_tot, ie_tot, ea_tot, vel_gas_x_tot, vel_gas_y_tot, vel_gas_z_tot, x2_tot, y2_tot, stars_tot, vel_star_x_tot, vel_star_y_tot, vel_star_z_tot, x3_tot, y3_tot, x4_tot, y4_tot, dm_tot, vel_dm_x_tot, vel_dm_y_tot, vel_dm_z_tot, cen_subhalo_x_tot, cen_subhalo_y_tot, rad_subhalo_tot, st_age_tot = (np.array([]) for i in range(26))
+	x_tot, y_tot, z_tot, dens_tot, ie_tot, ea_tot, vel_gas_x_tot, vel_gas_y_tot, vel_gas_z_tot, x2_tot, y2_tot, z2_tot, stars_tot, vel_star_x_tot, vel_star_y_tot, vel_star_z_tot, x3_tot, y3_tot, z3_tot, x4_tot, y4_tot, z4_tot, dm_tot, vel_dm_x_tot, vel_dm_y_tot, vel_dm_z_tot, cen_subhalo_x_tot, cen_subhalo_y_tot, cen_subhalo_z_tot, rad_subhalo_tot, st_age_tot, st_mass_vyg_tot, youngfrac_rev_tot = (np.array([]) for i in range(33))
 
 	test = sub_prog_halo['child_subhalos']['results']
 	print ('Sub Halo list - ')
 	sys.stdout.flush()
 	time.sleep(0.1)
+
+	if (len(test) < int(d['child_subhalo_count'])):
+		d['child_subhalo_count'] = int(len(test))
+		
 	for i in range(int(d['child_subhalo_count'])):
 		print (test[i]['url'])
 		sys.stdout.flush()
@@ -378,10 +450,11 @@ def particle_information_child_subhalos(sub_prog_url_cust):
 		if (sub_prog_url_cust==test[i]['url']):
 			counter_for_identifying_vyg_child_halo = int(i)
 			
-		x, y, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, stars, vel_star_x, vel_star_y, vel_star_z, x_bh, y_bh, x_dm, y_dm, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, cen_subhalo_x, cen_subhalo_y, rad_subhalo, st_age = retrieve_particle_data(test[i]['url'], sub_prog_url_cust)
+		x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x_bh, y_bh, z_bh, x_dm, y_dm, z_dm, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, cen_subhalo_x, cen_subhalo_y, cen_subhalo_z, rad_subhalo, st_age, st_mass_vyg, youngfrac_rev = retrieve_particle_data(test[i]['url'], sub_prog_url_cust)
 
 		x_tot = np.append(x_tot, x)
 		y_tot = np.append(y_tot, y)
+		z_tot = np.append(z_tot, z)
 		dens_tot = np.append(dens_tot, dens)
 		ie_tot = np.append(ie_tot, ie)
 		ea_tot = np.append(ea_tot, ea)
@@ -390,22 +463,28 @@ def particle_information_child_subhalos(sub_prog_url_cust):
 		vel_gas_z_tot = np.append(vel_gas_z_tot, vel_gas_z)
 		x2_tot = np.append(x2_tot, x2)
 		y2_tot = np.append(y2_tot, y2)
+		z2_tot = np.append(z2_tot, z2)
 		stars_tot = np.append(stars_tot, stars)
 		vel_star_x_tot = np.append(vel_star_x_tot, vel_star_x)
 		vel_star_y_tot = np.append(vel_star_y_tot, vel_star_y)
 		vel_star_z_tot = np.append(vel_star_z_tot, vel_star_z)
 		x3_tot = np.append(x3_tot, x_bh)
 		y3_tot = np.append(y3_tot, y_bh)
+		z3_tot = np.append(z3_tot, z_bh)
 		x4_tot = np.append(x4_tot, x_dm)
 		y4_tot = np.append(y4_tot, y_dm)
+		z4_tot = np.append(z4_tot, z_dm)
 		dm_tot = np.append(dm_tot, dm_mass)
 		vel_dm_x_tot = np.append(vel_dm_x_tot, vel_dm_x)
 		vel_dm_y_tot = np.append(vel_dm_y_tot, vel_dm_y)
 		vel_dm_z_tot = np.append(vel_dm_z_tot, vel_dm_z)
 		cen_subhalo_x_tot = np.append(cen_subhalo_x_tot, cen_subhalo_x)
 		cen_subhalo_y_tot = np.append(cen_subhalo_y_tot, cen_subhalo_y)
+		cen_subhalo_z_tot = np.append(cen_subhalo_z_tot, cen_subhalo_z)
 		rad_subhalo_tot = np.append(rad_subhalo_tot, rad_subhalo)
 		st_age_tot = np.append(st_age_tot, st_age)
+		st_mass_vyg_tot = np.append(st_mass_vyg_tot, st_mass_vyg)
+		youngfrac_rev_tot = np.append(youngfrac_rev_tot, youngfrac_rev)
 
 	print ('Total subhalos - ', len(test))
 	sys.stdout.flush()
@@ -415,7 +494,7 @@ def particle_information_child_subhalos(sub_prog_url_cust):
 	except NameError:
 		counter_for_identifying_vyg_child_halo = 0
 
-	return (x_tot, y_tot, dens_tot, ie_tot, ea_tot, vel_gas_x_tot, vel_gas_y_tot, vel_gas_z_tot, x2_tot, y2_tot, stars_tot, vel_star_x_tot, vel_star_y_tot, vel_star_z_tot, x3_tot, y3_tot, x4_tot, y4_tot, dm_tot, vel_dm_x_tot, vel_dm_y_tot, vel_dm_z_tot, cen_subhalo_x_tot, cen_subhalo_y_tot, rad_subhalo_tot, st_age_tot, counter_for_identifying_vyg_child_halo)
+	return (x_tot, y_tot, z_tot, dens_tot, ie_tot, ea_tot, vel_gas_x_tot, vel_gas_y_tot, vel_gas_z_tot, x2_tot, y2_tot, z2_tot, stars_tot, vel_star_x_tot, vel_star_y_tot, vel_star_z_tot, x3_tot, y3_tot, z3_tot, x4_tot, y4_tot, z4_tot, dm_tot, vel_dm_x_tot, vel_dm_y_tot, vel_dm_z_tot, cen_subhalo_x_tot, cen_subhalo_y_tot, cen_subhalo_z_tot, rad_subhalo_tot, st_age_tot, st_mass_vyg_tot, youngfrac_rev_tot, counter_for_identifying_vyg_child_halo)
 
 #######################GET_PARTICLE_INFORMATION_FROM_TNG_DATA#######################
 
@@ -454,18 +533,20 @@ str5 = "/subhalos/"
 str6 = str(d['galaxyid'])
 str7 = "/"
 total_str = str1 + str2 + str3 + str4 + str5 + str6 + str7
-sub_prog_url = total_str
+sub_prog_url = total_str.rstrip()
 sub_prog = get(sub_prog_url)
 colormap_new = str(d['clrmap'])
 bin_number = int(d['bins_for_hist'])
+#print (bin_number)
+#bin_number = int(10**(float(d['bins_for_hist'])))
 window_size_init = float(d['window_size'])
 xlabel_str = str(r'$\rm \Delta x$ [ckpc/h]')
 ylabel_str = str(r'$\rm \Delta y$ [ckpc/h]')
 size_of_font = int(d['fontsize'])
 vel_limit = float(d['limiting_velocity'])
 
-hzdict7 = {'gas_density': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_st_mass': 10}
-hzdict8 = {'gas_density': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_st_mass': 1}
+hzdict7 = {'gas_density': 0, 'temp': 1, 'stars': 2, 'gas_vel': 3, 'star_vel': 4, 'vgas_rad': 5, 'vstar_rad': 6, 'mass_dm': 7, 'dm_vel': 8, 'stellar_age': 9, 'vyg_st_mass': 10, 'vyg_fraction': 11}
+hzdict8 = {'gas_density': 0, 'temp': 0, 'stars': 1, 'gas_vel': 0, 'star_vel': 1, 'vgas_rad': 0, 'vstar_rad': 1, 'mass_dm': 3, 'dm_vel': 3, 'stellar_age': 1, 'vyg_st_mass': 1, 'vyg_fraction': 1}
 
 
 
@@ -548,12 +629,16 @@ time.sleep(0.1)
 sub_prog_url_array = np.delete(sub_prog_url_array, 0)
 filename_x = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_y = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename_z = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_x2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_y2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename_z2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_x3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_y3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename_z3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_x4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename_y4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename_z4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename1 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
@@ -573,18 +658,25 @@ filename16 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename17 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename19 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 filename18 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename20 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename21 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
+filename22 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 
 linkname = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 
 for i in range(len(sub_prog_url_array)):
 	filename_x[i] = (str(str_dir_name) + "pos_x_" + str(i) + ".npy")
 	filename_y[i] = (str(str_dir_name) + "_y_" + str(i) + ".npy")
+	filename_z[i] = (str(str_dir_name) + "_z_" + str(i) + ".npy")
 	filename_x2[i] = (str(str_dir_name) + "_x2_" + str(i) + ".npy")
 	filename_y2[i] = (str(str_dir_name) + "_y2_" + str(i) + ".npy")
+	filename_z2[i] = (str(str_dir_name) + "_z2_" + str(i) + ".npy")
 	filename_x3[i] = (str(str_dir_name) + "_x3_" + str(i) + ".npy")
 	filename_y3[i] = (str(str_dir_name) + "_y3_" + str(i) + ".npy")
+	filename_z3[i] = (str(str_dir_name) + "_z3_" + str(i) + ".npy")
 	filename_x4[i] = (str(str_dir_name) + "_x4_" + str(i) + ".npy")
 	filename_y4[i] = (str(str_dir_name) + "_y4_" + str(i) + ".npy")
+	filename_z4[i] = (str(str_dir_name) + "_z4_" + str(i) + ".npy")
 	filename1[i] = (str(str_dir_name) + "_gas_density_" + str(i) + ".npy")
 	filename2[i] = (str(str_dir_name) + "_gas_ie_" + str(i) + ".npy")
 	filename3[i] = (str(str_dir_name) + "_gas_ea_" + str(i) + ".npy")
@@ -601,9 +693,12 @@ for i in range(len(sub_prog_url_array)):
 	filename14[i] = (str(str_dir_name) + "_vel_dm_z_" + str(i) + ".npy")
 	filename15[i] = (str(str_dir_name) + "_center_subhalo_x_" + str(i) + ".npy")
 	filename16[i] = (str(str_dir_name) + "_center_subhalo_y_" + str(i) + ".npy")
+	filename20[i] = (str(str_dir_name) + "_center_subhalo_z_" + str(i) + ".npy")
 	filename17[i] = (str(str_dir_name) + "_radius_subhalo_" + str(i) + ".npy")
 	filename19[i] = (str(str_dir_name) + "_stellar_age_" + str(i) + ".npy")
 	filename18[i] = (str(str_dir_name) + "_vyg_counter_" + str(i) + ".npy")
+	filename21[i] = (str(str_dir_name) + "_vyg_stellar_mass_" + str(i) + ".npy")
+	filename22[i] = (str(str_dir_name) + "_vyg_fraction_" + str(i) + ".npy")
 
 	if (path.exists(filename_x[i])):
 		print ("File exists")
@@ -614,16 +709,20 @@ for i in range(len(sub_prog_url_array)):
 		print (linkname[i].decode("utf-8"))
 		sys.stdout.flush()
 		time.sleep(0.1)
-		x, y, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, x4, y4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, subhalo_cen_x, subhalo_cen_y, subhalo_rad, stars_age, vyg_counter_s = particle_information_child_subhalos(linkname[i].decode("utf-8"))
+		x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, subhalo_rad, stars_age, stellar_mass_vyg, youngfrac_vyg, vyg_counter_s = particle_information_child_subhalos(linkname[i].decode("utf-8"))
 		
 		np.save(filename_x[i].decode("utf-8"), x)
 		np.save(filename_y[i].decode("utf-8"), y)
+		np.save(filename_z[i].decode("utf-8"), z)
 		np.save(filename_x2[i].decode("utf-8"), x2)
 		np.save(filename_y2[i].decode("utf-8"), y2)
+		np.save(filename_z2[i].decode("utf-8"), z2)
 		np.save(filename_x3[i].decode("utf-8"), x3)
 		np.save(filename_y3[i].decode("utf-8"), y3)
+		np.save(filename_z3[i].decode("utf-8"), z3)
 		np.save(filename_x4[i].decode("utf-8"), x4)
 		np.save(filename_y4[i].decode("utf-8"), y4)
+		np.save(filename_z4[i].decode("utf-8"), z4)
 		np.save(filename1[i].decode("utf-8"), dens)
 		np.save(filename2[i].decode("utf-8"), ie)
 		np.save(filename3[i].decode("utf-8"), ea)
@@ -640,9 +739,13 @@ for i in range(len(sub_prog_url_array)):
 		np.save(filename14[i].decode("utf-8"), vel_dm_z)
 		np.save(filename15[i].decode("utf-8"), subhalo_cen_x)
 		np.save(filename16[i].decode("utf-8"), subhalo_cen_y)
+		np.save(filename20[i].decode("utf-8"), subhalo_cen_z)
 		np.save(filename17[i].decode("utf-8"), subhalo_rad)
 		np.save(filename19[i].decode("utf-8"), stars_age)
 		np.save(filename18[i].decode("utf-8"), vyg_counter_s)
+		np.save(filename21[i].decode("utf-8"), stellar_mass_vyg)
+		np.save(filename22[i].decode("utf-8"), youngfrac_vyg)
+
 
 #######################GET_PARTICLE_DATA_AND_SAVE_IT_IN_A_FILE#######################
 
@@ -653,6 +756,8 @@ data_x = []
 subhalo_cen_x = []
 data_y = []
 subhalo_cen_y = []
+data_z = []
+subhalo_cen_z = []
 data_real = []
 subhalo_radius = []
 stelar_mass = []
@@ -660,44 +765,45 @@ stelar_age = []
 stelar_age_rev = []
 vyg_counter = []
 vyg_st_mass = []
-str_for_param_selection = 0
+vyg_fraction = []
+
+
 
 for i in range(0,len(sub_prog_url_array)):
-	data_x.append(np.array([(np.load(filename_x[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
-	data_y.append(np.array([(np.load(filename_y[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
-
-	ie = (np.load(filename2[i].decode("utf-8"), allow_pickle=True))
-	ea = (np.load(filename3[i].decode("utf-8"), allow_pickle=True))
-	temp = temperature_estimation(ie, ea)
-	
-	vel_gas_x = (np.load(filename5[i].decode("utf-8"), allow_pickle=True))
-	vel_gas_y = (np.load(filename6[i].decode("utf-8"), allow_pickle=True))
-	vel_gas_z = (np.load(filename7[i].decode("utf-8"), allow_pickle=True))
-	vel_star_x = (np.load(filename8[i].decode("utf-8"), allow_pickle=True))
-	vel_star_y = (np.load(filename9[i].decode("utf-8"), allow_pickle=True))
-	vel_star_z = (np.load(filename10[i].decode("utf-8"), allow_pickle=True))
-	gas_kinematics = np.sqrt(vel_gas_x**2 + vel_gas_y**2 + vel_gas_z**2)
-	radial_vel_gas = (np.load(filename7[i].decode("utf-8"), allow_pickle=True))
-	stellar_kinematics = np.sqrt(vel_star_x**2 + vel_star_y**2 + vel_star_z**2)
-	radial_vel_star = (np.load(filename10[i].decode("utf-8"), allow_pickle=True))
-	mass_dm = (np.load(filename11[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_x = (np.load(filename12[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_y = (np.load(filename13[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_z = (np.load(filename14[i].decode("utf-8"), allow_pickle=True))
-	dm_kinematics = np.sqrt(vel_dm_x**2 + vel_dm_y**2 + vel_dm_z**2)
-
-	subhalo_cen_x.append(np.array([(np.load(filename15[i].decode("utf-8"), allow_pickle=True))]))
-	subhalo_cen_y.append(np.array([(np.load(filename16[i].decode("utf-8"), allow_pickle=True))]))
-	subhalo_radius.append(np.array([(np.load(filename17[i].decode("utf-8"), allow_pickle=True))]))
-	stelar_mass.append(np.array([(np.load(filename4[i].decode("utf-8"), allow_pickle=True))]))
-	stelar_age.append(np.array([(np.load(filename19[i].decode("utf-8"), allow_pickle=True))]))
 	vyg_counter.append(np.array([(np.load(filename18[i].decode("utf-8"), allow_pickle=True))]))
-	stelar_age_rev = stelar_age[i][0] / stelar_mass[i][0]
-	vyg_st_mass = stelar_mass[i][0]
-	vyg_st_mass[stelar_age[i][0]<=(np.nanmax(cosmic_age_original)-1.)] = np.nan
-	fracYoung = vyg_st_mass / stelar_mass[i][0]
-	print (np.nanmin(radial_vel_gas), np.nanmax(radial_vel_gas))
-	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age_rev, fracYoung], dtype="object"))
+
+for i in range(0,len(sub_prog_url_array)):
+	idx_cust = i
+	data_x.append(np.array([(np.load(filename_x[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_x2[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_x3[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_x4[idx_cust].decode("utf-8"), allow_pickle=True))], dtype="object"))
+	data_y.append(np.array([(np.load(filename_y[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_y2[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_y3[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_y4[idx_cust].decode("utf-8"), allow_pickle=True))], dtype="object"))
+	data_z.append(np.array([(np.load(filename_z[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_z2[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_z3[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename_z4[idx_cust].decode("utf-8"), allow_pickle=True))], dtype="object"))
+	ie = (np.load(filename2[idx_cust].decode("utf-8"), allow_pickle=True))
+	ea = (np.load(filename3[idx_cust].decode("utf-8"), allow_pickle=True))
+	temp = temperature_estimation(ie, ea)
+	vel_gas_x = (np.load(filename5[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_gas_y = (np.load(filename6[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_gas_z = (np.load(filename7[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_star_x = (np.load(filename8[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_star_y = (np.load(filename9[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_star_z = (np.load(filename10[idx_cust].decode("utf-8"), allow_pickle=True))
+	gas_kinematics = np.sqrt(vel_gas_x**2 + vel_gas_y**2 + vel_gas_z**2)
+	radial_vel_gas = (np.load(filename7[idx_cust].decode("utf-8"), allow_pickle=True))
+	stellar_kinematics = np.sqrt(vel_star_x**2 + vel_star_y**2 + vel_star_z**2)
+	radial_vel_star = (np.load(filename10[idx_cust].decode("utf-8"), allow_pickle=True))
+	mass_dm = (np.load(filename11[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_dm_x = (np.load(filename12[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_dm_y = (np.load(filename13[idx_cust].decode("utf-8"), allow_pickle=True))
+	vel_dm_z = (np.load(filename14[idx_cust].decode("utf-8"), allow_pickle=True))
+	dm_kinematics = np.sqrt(vel_dm_x**2 + vel_dm_y**2 + vel_dm_z**2)
+	subhalo_cen_x.append(np.array([(np.load(filename15[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	subhalo_cen_y.append(np.array([(np.load(filename16[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	subhalo_cen_z.append(np.array([(np.load(filename20[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	subhalo_radius.append(np.array([(np.load(filename17[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	stelar_mass.append(np.array([(np.load(filename4[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	stelar_age.append(np.array([(np.load(filename19[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	#vyg_st_mass.append(np.array([(np.load(filename21[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	#vyg_fraction.append(np.array([(np.load(filename22[idx_cust].decode("utf-8"), allow_pickle=True))]))
+	data_real.append(np.array([(np.load(filename1[idx_cust].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[idx_cust].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age, (np.load(filename21[idx_cust].decode("utf-8"), allow_pickle=True)), (np.load(filename22[idx_cust].decode("utf-8"), allow_pickle=True))], dtype="object"))
 
 
 #######################LOAD_PARTICLE_INFORMATION_FROM_FILE_FOR_PREOCESSING#######################
@@ -706,65 +812,59 @@ for i in range(0,len(sub_prog_url_array)):
 #Initialize certain dynamic parameters to plot the base MATPLOTLIB window
 
 mv = 0
+str_for_param_selection = 0
+axis_to_use = 0
 time_val_init = snap_array.min()
 window_size_init = int(d['init_zoom_val'])
 fig, ax = plt.subplots()
 ax.cla()
 
+'''
 ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
 ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
 ab3 = AnnotationBbox(addLogo3, (1.3, 0.4), xycoords='axes fraction', box_alignment=(1.1,-0.1))
 ax.add_artist(ab1)
 ax.add_artist(ab2)
 ax.add_artist(ab3)
-
+'''
 
 rax = plt.axes(d['pos_check_button_for_showing_rings_and_bh'])
 axtime = plt.axes(d['pos_slider_for_moving_through_snapshots'])
 axzoom = plt.axes(d['pos_slider_for_zooming_in_out'])
+axbinsize = plt.axes(d['pos_slider_for_changing_binsize_log'])
+axtheta = plt.axes(d['pos_slider_for_theta_change'])
+axphi = plt.axes(d['pos_slider_for_phi_change'])
 rax7 = fig.add_axes(d['pos_radio_button_for_changing_parameters'])
 rax9 = fig.add_axes(d['pos_radio_button_for_changing_colorbar_scale'])
 movie_button_ax = plt.axes(d['pos_button_for_making_movie'])
 
-'''
-str_for_param_selection = 5
-
-#im = ax.hist2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-data, xedges, yedges  = np.histogram2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], normed=True)
-data = data.T
-#im = ax.hist2d(test_x[1:], test_y[1:], weights=data, bins=len(test_x), cmap=colormap_new, zorder=1)
-#im_cl = add_colorbar(im[3])
-#im = ax.imshow(data, interpolation='nearest', origin='lower', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
-#im_cl = add_colorbar_lin(im)
-X, Y = np.meshgrid(xedges, yedges)
-im = ax.pcolormesh(X, Y, data*(bin_number**2))
-im_cl = add_colorbar_lin(im)
-
 #https://stackoverflow.com/questions/58937863/plot-average-of-scattered-values-in-2d-bins-as-a-histogram-hexplot
-H, xedges, yedges = np.histogram2d(data_x[mv][0], data_y[mv][0], bins = [bin_number, bin_number], weights = data_real[mv][str_for_param_selection])
-H_counts, xedges, yedges = np.histogram2d(data_x[mv][0], data_y[mv][0], bins = [bin_number, bin_number])
-H = H/H_counts
-
-im = ax.imshow(H, origin='lower',  cmap='RdBu', extent=[yedges[0], yedges[-1], xedges[0], xedges[-1]])
-im_cl = add_colorbar_lin(im)
-'''
-
-im = ax.hist2d(data_x[mv][0],data_y[mv][0],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-im_cl = add_colorbar(im[3])
-
-
-def extra_plotting(ax, mv):
-	circle2 = plt.Circle((subhalo_cen_x[mv][0][vyg_counter[mv]], subhalo_cen_y[mv][0][vyg_counter[mv]]), subhalo_radius[mv][0][vyg_counter[mv]], color = str(d['vyg_ring_color']), fill=False, ls=str(d['vyg_ring_linestyle']), lw=int(d['vyg_ring_linewidth']), zorder=4)
+def plot_main(ax, x, y, z, data, statistic_val=np.nanmedian, bin_num_x=bin_number, bin_num_y=bin_number, plot_type='linear', phi=0., theta=0., plot_dimensions='3d'):
+    global im_cl
+    x_turned, y_turned, z_turned = rotaion_matrix_group_new(x, y, z, phi, theta)
+    #print (bin_num_x, bin_num_y)
+    x_bins = np.linspace(-window_size_init, window_size_init, int(bin_num_x))
+    y_bins = np.linspace(-window_size_init, window_size_init, int(bin_num_y))
+    ret = binned_statistic_2d(x_turned, y_turned, data, statistic=statistic_val, bins=[x_bins, y_bins])
+    if ('log' in plot_type.lower()):
+        im = ax.imshow(ret.statistic.T, origin='lower', cmap=colormap_new, norm=LogNorm(), zorder=1, extent=(-window_size_init, window_size_init, -window_size_init, window_size_init))
+        im_cl = add_colorbar(im)
+    else:
+        im = ax.imshow(ret.statistic.T, origin='lower', cmap=colormap_new, zorder=1, extent=(-window_size_init, window_size_init, -window_size_init, window_size_init))
+        im_cl = add_colorbar_lin(im)
+ 
+def extra_plotting(ax, mv, subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, subhalo_radius, x_bh, y_bh, z_bh, phi=0.0, theta=0.0):
+	subhalo_x_turned, subhalo_y_turned, subhalo_z_turned = rotaion_matrix_group_new(subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, phi, theta)
+	circle2 = plt.Circle((subhalo_x_turned[vyg_counter[mv]], subhalo_y_turned[vyg_counter[mv]]), subhalo_radius[vyg_counter[mv]], color = str(d['vyg_ring_color']), fill=False, ls=str(d['vyg_ring_linestyle']), lw=int(d['vyg_ring_linewidth']), zorder=4)
 	ax.add_artist(circle2)
-	im2, = ax.plot(data_x[mv][2], data_y[mv][2], color=str(d['black_hole_color']), marker=str(d['black_hole_markerstyle']), ls="None", markersize=int(d['black_hole_markersize']), alpha=float(d['black_hole_plot_alpha']), zorder=2)
+	x_bh_turned, y_bh_turned, z_bh_turned = rotaion_matrix_group_new(x_bh, y_bh, z_bh, phi, theta)
+	im2, = ax.plot(x_bh_turned, y_bh_turned, color=str(d['black_hole_color']), marker=str(d['black_hole_markerstyle']), ls="None", markersize=int(d['black_hole_markersize']), alpha=float(d['black_hole_plot_alpha']), zorder=2)
 	circle_final = []
-	for i in range(len(subhalo_cen_x[mv][0])):
-		circle1 = plt.Circle((subhalo_cen_x[mv][0][i], subhalo_cen_y[mv][0][i]), subhalo_radius[mv][0][i], color = str(d['subhalo_ring_color']), fill=False, ls=str(d['subhalo_ring_linestyle']), lw=int(d['subhalo_ring_linewidth']), zorder=3)
+	for i in range(len(subhalo_x_turned)):
+		circle1 = plt.Circle((subhalo_x_turned[i], subhalo_y_turned[i]), subhalo_radius[i], color = str(d['subhalo_ring_color']), fill=False, ls=str(d['subhalo_ring_linestyle']), lw=int(d['subhalo_ring_linewidth']), zorder=3)
 		ax.add_artist(circle1)
 		circle_final.append(circle1)
 	return(im2, circle_final)
-
-im2, circle_final = extra_plotting(ax, mv)
 
 def put_time_label(time_val, ax, window_size):
 	snap_index = np.where(int(time_val)==snapshots_original)
@@ -779,8 +879,7 @@ def put_time_label(time_val, ax, window_size):
 	ax.set_ylabel(ylabel_str)
 	plt.draw()
 
-put_time_label(time_val_init, ax, window_size_init)
-
+'''
 def add_label(ax):
 	ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
 	ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
@@ -788,18 +887,25 @@ def add_label(ax):
 	ax.add_artist(ab1)
 	ax.add_artist(ab2)
 	ax.add_artist(ab3)
-
-add_label(ax)
+'''
 
 check = CheckButtons(rax, ('Black Hole', 'Subhalo Rings'), (True, True))
-def func(label):
-	if label == 'Black Hole':
-		im2.set_visible(not im2.get_visible())
-	elif label == 'Subhalo Rings':
-		for i in range(len(circle_final)):
-			circle_final[i].set_visible(not circle_final[i].get_visible())
-	fig.canvas.draw_idle()
-check.on_clicked(func)
+def bh_func(im2, circle_final):
+    def func(label):
+        if label == 'Black Hole':
+            im2.set_visible(not im2.get_visible())
+        elif label == 'Subhalo Rings':
+            for i in range(len(circle_final)):
+                circle_final[i].set_visible(not circle_final[i].get_visible())
+        fig.canvas.draw_idle()
+    check.on_clicked(func)
+
+
+plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type='log', bin_num_x=bin_number, bin_num_y=bin_number)
+im2, circle_final = extra_plotting(ax, mv, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=float(d['default_phi']), theta=float(d['default_theta']))
+put_time_label(time_val_init, ax, window_size_init)
+#add_label(ax)
+bh_func(im2, circle_final)
 
 
 #######################PLOTTING_BASE_WINDOW#######################
@@ -814,41 +920,23 @@ def update(val):
 	str_for_param_selection = int(hzdict7[radio7.value_selected])
 	axis_to_use = int(hzdict8[radio7.value_selected])
 	colorbar_scaling = str(radio9.value_selected)
+	binsize_updated = int(10**(float(sbinsize.val)))
+	theta_updated = float(stheta.val)
+	phi_updated = float(sphi.val)
 	ax.cla()
 	im_cl.remove()
-	if (colorbar_scaling=='Linear'):
-		im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1, density=False)
-		im_cl = add_colorbar_lin(im[3])
-	else:
-		if (np.any(data_real[mv][str_for_param_selection])<=0.):
-			print ('Found negative values in data. Plotting on Linear Scale')
-			sys.stdout.flush()
-			time.sleep(0.1)
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1, density=False)
-			im_cl = add_colorbar_lin(im[3])
-		else:
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1, density=False)
-			im_cl = add_colorbar(im[3])
-
-	im2, circle_final = extra_plotting(ax, mv)
+	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+	im2, circle_final = extra_plotting(ax, mv, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax, float(szoom.val))
-	add_label(ax)
-
-	def func(label):
-		if label == 'Black Hole':
-			im2.set_visible(not im2.get_visible())
-		elif label == 'Subhalo Rings':
-			for i in range(len(circle_final)):
-				circle_final[i].set_visible(not circle_final[i].get_visible())
-		fig.canvas.draw_idle()
-	check.on_clicked(func)
+	#add_label(ax)
+	bh_func(im2, circle_final)
 fig.canvas.draw_idle()
 
 
 
 #######################UPDATE_THE_GUI#######################
 
-#######################SLIDER_FOR_MOVING_THROUGH_SNAPSHOTS#######################
+#######################SLIDERS_FOR_DIFFERENT_OPTIONS#######################
 
 # GUI Slider for moving through snapshots
 
@@ -860,7 +948,23 @@ stime.on_changed(update)
 szoom = Slider(axzoom, 'Zoom', int(d['min_zoom_allowed']), int(d['max_zoom_allowed']), valinit=int(d['init_zoom_val']), valfmt="%i")
 szoom.on_changed(update)
 
-#######################SLIDER_FOR_MOVING_THROUGH_SNAPSHOTS#######################
+# GUI Slider for changing binsize (in log)
+init_binsize = np.log10(float(d['bins_for_hist']))
+sbinsize = Slider(axbinsize, 'Binsize', float(d['min_binsize_allowed']), float(d['max_binsize_allowed']), valinit=init_binsize, valfmt="%2.2f")
+sbinsize.on_changed(update)
+
+# GUI Slider for changing theta
+
+stheta = Slider(axtheta, 'Theta', float(d['min_theta_allowed']), float(d['max_theta_allowed']), valinit=float(d['default_theta']), valfmt="%2.2f")
+stheta.on_changed(update)
+
+# GUI Slider for changing theta
+
+sphi = Slider(axphi, 'Phi', float(d['min_phi_allowed']), float(d['max_phi_allowed']), valinit=float(d['default_phi']), valfmt="%2.2f")
+sphi.on_changed(update)
+
+#######################SLIDERS_FOR_DIFFERENT_OPTIONS#######################
+
 
 
 #######################RADIO_BUTTON_FOR_CHOOSING_DIFFERENT_COLORBAR_SCALE#######################
@@ -872,34 +976,17 @@ def hzfunc9(label9):
 	str_for_param_selection = int(hzdict7[radio7.value_selected])
 	axis_to_use = int(hzdict8[radio7.value_selected])
 	colorbar_scaling = str(radio9.value_selected)
+	binsize_updated = int(10**(float(sbinsize.val)))
+	theta_updated = float(stheta.val)
+	phi_updated = float(sphi.val)
 	ax.cla()
 	im_cl.remove()
-	if (colorbar_scaling=='Linear'):
-		im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-		im_cl = add_colorbar_lin(im[3])
-	else:
-		if (np.any(data_real[mv][str_for_param_selection])<=0.):
-			print ('Found negative values in data. Plotting on Linear Scale')
-			sys.stdout.flush()
-			time.sleep(0.1)
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-			im_cl = add_colorbar_lin(im[3])
-		else:
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-			im_cl = add_colorbar(im[3])
-
-	im2, circle_final = extra_plotting(ax, mv)
+	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+	#im2, circle_final = extra_plotting(ax, mv)
+	im2, circle_final = extra_plotting(ax, mv, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax, float(szoom.val))
-	add_label(ax)
-	
-	def func(label):
-		if label == 'Black Hole':
-			im2.set_visible(not im2.get_visible())
-		elif label == 'Subhalo Rings':
-			for i in range(len(circle_final)):
-				circle_final[i].set_visible(not circle_final[i].get_visible())
-		fig.canvas.draw_idle()
-	check.on_clicked(func)
+	#add_label(ax)
+	bh_func(im2, circle_final)
 radio9.on_clicked(hzfunc9)
 
 #######################RADIO_BUTTON_FOR_CHOOSING_DIFFERENT_COLORBAR_SCALE#######################
@@ -910,41 +997,24 @@ radio9.on_clicked(hzfunc9)
 # GUI Radio button for moving throught different particle information like Gas Density,-
 #-Temperature, Stellar density, Gas velocity, stellar velocity, Gas radial velocity, Stellar radial velocity
 
-radio7 = RadioButtons(rax7, ('gas_density', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_st_mass'), active=0)
+radio7 = RadioButtons(rax7, ('gas_density', 'temp', 'stars', 'gas_vel', 'star_vel', 'vgas_rad', 'vstar_rad', 'mass_dm', 'dm_vel', 'stellar_age', 'vyg_st_mass', 'vyg_fraction'), active=0)
 def hzfunc7(label7):
 	global im_cl
 	mv = int(int(np.floor(stime.val)) - snap_array.min()-1)
 	str_for_param_selection = int(hzdict7[label7])
 	axis_to_use = int(hzdict8[radio7.value_selected])
 	colorbar_scaling = str(radio9.value_selected)
+	binsize_updated = int(10**(float(sbinsize.val)))
+	theta_updated = float(stheta.val)
+	phi_updated = float(sphi.val)
 	ax.cla()
 	im_cl.remove()
-	if (colorbar_scaling=='Linear'):
-		im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-		im_cl = add_colorbar_lin(im[3])
-	else:
-		if (np.any(data_real[mv][str_for_param_selection])<=0.):
-			print ('Found negative values in data. Plotting on Linear Scale')
-			sys.stdout.flush()
-			time.sleep(0.1)
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-			im_cl = add_colorbar_lin(im[3])
-		else:
-			im = ax.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-			im_cl = add_colorbar(im[3])
-
-	im2, circle_final = extra_plotting(ax, mv)
+	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+	#im2, circle_final = extra_plotting(ax, mv)
+	im2, circle_final = extra_plotting(ax, mv, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax, float(szoom.val))
-	add_label(ax)
-	
-	def func(label):
-		if label == 'Black Hole':
-			im2.set_visible(not im2.get_visible())
-		elif label == 'Subhalo Rings':
-			for i in range(len(circle_final)):
-				circle_final[i].set_visible(not circle_final[i].get_visible())
-		fig.canvas.draw_idle()
-	check.on_clicked(func)
+	#add_label(ax)
+	bh_func(im2, circle_final)
 radio7.on_clicked(hzfunc7)
 
 #######################RADIO_BUTTON_FOR_CHOOSING_DIFFERENT_PARTICLE_INFORMATION#######################
@@ -952,16 +1022,48 @@ radio7.on_clicked(hzfunc7)
 
 #######################BUTTON_TO_CREATE_A_MOVIE#######################
 
+#https://stackoverflow.com/questions/58937863/plot-average-of-scattered-values-in-2d-bins-as-a-histogram-hexplot
+def plot_main_movie(ax_new, x, y, z, data, statistic_val=np.nanmedian, bin_num_x=bin_number, bin_num_y=bin_number, plot_type='linear', phi=0., theta=0.):
+	global im_cl_new
+	x_turned, y_turned, z_turned = rotaion_matrix_group_new(x, y, z, phi, theta)
+	x_bins = np.linspace(-window_size_init, window_size_init, int(bin_num_x))
+	y_bins = np.linspace(-window_size_init, window_size_init, int(bin_num_y))
+	ret = binned_statistic_2d(x_turned, y_turned, data, statistic=statistic_val, bins=[x_bins, y_bins])
+	if ('log' in plot_type.lower()):
+		im_new = ax_new.imshow(ret.statistic.T, origin='lower', cmap=colormap_new, norm=LogNorm(), zorder=1, extent=(-window_size_init, window_size_init, -window_size_init, window_size_init))
+		im_cl_new = add_colorbar(im_new)
+	else:
+		im_new = ax_new.imshow(ret.statistic.T, origin='lower', cmap=colormap_new, zorder=1, extent=(-window_size_init, window_size_init, -window_size_init, window_size_init))
+		im_cl_new = add_colorbar_lin(im_new)
+	return im_new
+
+def put_time_label_movie(time_val, fig_new, ax_new, window_size):
+	snap_index = np.where(int(time_val)==snapshots_original)
+	str_z = r'$z$=%2.2f' %float(redshift_original[snap_index])
+	str_t = r'$t$=%2.2f' %float(cosmic_age_original[snap_index])
+	ax_new.text(-window_size+10, window_size-10, str_z, fontsize = size_of_font/3, zorder=5)
+	ax_new.text(-window_size+10, window_size-20, str_t, fontsize = size_of_font/3, zorder=5)
+	ax_new.set_xlim(-window_size,window_size)
+	ax_new.set_ylim(-window_size,window_size)
+	ax_new.set_aspect('equal')
+	ax_new.set_xlabel(xlabel_str)
+	ax_new.set_ylabel(ylabel_str)
+	#fig_new.canvas.draw_idle()
+	plt.draw()
+
 
 def ani_frame():
 	global im_cl_new
 	dpi = int(d['movie_dpi'])
 	fig_new = plt.figure(2)
 	ax_new = fig_new.add_subplot(111)
-	mv = 0
+	mv_new = 0
 	str_for_param_selection = int(hzdict7[radio7.value_selected])
 	axis_to_use = int(hzdict8[radio7.value_selected])
 	colorbar_scaling = str(radio9.value_selected)
+	binsize_updated = int(10**(float(sbinsize.val)))
+	theta_updated = float(stheta.val)
+	phi_updated = float(sphi.val)
 
 	movie_name_count=1
 	movie_name = str('movie_') + str(radio7.value_selected) + str('_zoom_') + str(int(szoom.val)) + str('_count_') + str(movie_name_count) + str('.mp4')
@@ -969,22 +1071,12 @@ def ani_frame():
 		movie_name_count+=1
 		movie_name = str('movie_') + str(radio7.value_selected) + str('_zoom_') + str(int(szoom.val)) + str('_count_') + str(movie_name_count) + str('.mp4')
 
-	if (colorbar_scaling=='Linear'):
-		im_new = ax_new.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-		im_cl_new = add_colorbar_lin(im_new[3])
-	else:
-		if (np.any(data_real[mv][str_for_param_selection])<=0.):
-			print ('Found negative values in data. Plotting on Linear Scale')
-			sys.stdout.flush()
-			time.sleep(0.1)
-			im_new = ax_new.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-			im_cl_new = add_colorbar_lin(im_new[3])
-		else:
-			im_new = ax_new.hist2d(data_x[mv][axis_to_use],data_y[mv][axis_to_use],weights=data_real[mv][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-			im_cl_new = add_colorbar(im_new[3])
-
-	im2_new, circle_final_new = extra_plotting(ax_new, mv)
-	put_time_label(int(stime.val), ax_new, float(szoom.val))
+	im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+	#im2_new, circle_final_new = extra_plotting(ax_new, mv_new)
+	im2_new, circle_final_new = extra_plotting(ax_new, mv_new, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
+	put_time_label_movie(int(stime.val), fig_new, ax_new, float(szoom.val))
+    #add_label(ax_new)
+	bh_func(im2_new, circle_final_new)
 	fig_new.set_size_inches([5,5])
 	title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
 	fig_new.suptitle(title_string, fontsize=size_of_font/3)
@@ -995,23 +1087,12 @@ def ani_frame():
 		mv_new = int(n - snap_array.min())
 		ax_new.cla()
 		im_cl_new.remove()
-
-		if (colorbar_scaling=='Linear'):
-			im_new = ax_new.hist2d(data_x[mv_new][axis_to_use],data_y[mv_new][axis_to_use],weights=data_real[mv_new][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-			im_cl_new = add_colorbar_lin(im_new[3])
-		else:
-			if (np.any(data_real[mv][str_for_param_selection])<=0.):
-				print ('Found negative values in data. Plotting on Linear Scale')
-				sys.stdout.flush()
-				time.sleep(0.1)
-				im_new = ax_new.hist2d(data_x[mv_new][axis_to_use],data_y[mv_new][axis_to_use],weights=data_real[mv_new][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, zorder=1)
-				im_cl_new = add_colorbar_lin(im_new[3])
-			else:
-				im_new = ax_new.hist2d(data_x[mv_new][axis_to_use],data_y[mv_new][axis_to_use],weights=data_real[mv_new][str_for_param_selection],bins=[bin_number,bin_number], cmap=colormap_new, norm=LogNorm(), zorder=1)
-				im_cl_new = add_colorbar(im_new[3])
-
-		im2_new, circle_final_new = extra_plotting(ax_new, mv_new)
-		put_time_label(int(n), ax_new, float(szoom.val))
+		im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+		#im2_new, circle_final_new = extra_plotting(ax_new, mv_new)
+		im2_new, circle_final_new = extra_plotting(ax_new, mv_new, subhalo_cen_x[mv][0], subhalo_cen_y[mv][0], subhalo_cen_z[mv][0], subhalo_radius[mv][0], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
+		put_time_label_movie(int(n), fig_new, ax_new, float(szoom.val))
+        #add_label(ax_new)
+		bh_func(im2_new, circle_final_new)
 		return im_new,
 
 	frame_list = np.arange(int(snap_array.min()), int(snap_array.max())+1, 1)
