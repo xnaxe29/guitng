@@ -67,6 +67,16 @@ cosmo = FlatLambdaCDM(H0=67.8 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.308
 underline = '\033[4m'
 end_formatting = end_format = reset = '\033[0m'
 
+def print_cust(print_str, **kwargs):
+	sleep_time = kwargs.get('sleep_time', 0.1)  # Sleep Time
+	quite_val = kwargs.get('quiet_val', False)  # Quite Val
+	if not quite_val:
+		print ("\n")
+		print (print_str)
+		print ("\n")
+		sys.stdout.flush()
+		time.sleep(sleep_time)
+
 #Function to check if a directory exists. If not, create the directory.
 def check_directory(dir_name):
 	if not os.path.exists(dir_name):
@@ -142,17 +152,17 @@ scale_factor_original = cs_scale_factor(snapshots_original)
 redshift_original = cs_redshift(snapshots_original)
 cosmic_age_original = cosmo.age(redshift_original).value
 
-print ("Running script...")
-print (sys.argv[0])
+print ("Running script: \n")
+print (str(sys.argv[0]))
 print ("\n")
-print ("Current Working Directory:")
-print (sys.argv[1])
+print ("Current Working Directory: \n")
+print (str(sys.argv[1]))
 print ("\n")
-print ("Base Working Directory:")
-print (sys.argv[2])
-print ("\n")
+print ("Base Working Directory: \n")
+print (str(sys.argv[2]))
 sys.stdout.flush()
 time.sleep(0.1)
+print ("\n")
 
 #######################OBTAINING_PARAMETER_INFORMATION#######################
 #Obtains parameter information from a given parameter file
@@ -176,24 +186,14 @@ with open(str(parameter_file_string_base)) as f:
 				key = key.replace(':', '').replace('-', '').lower()
 				initial_guesses[str(key)] = val
 
-#logo1=image.imread(str(sys.argv[2]) + '/nrf_logo_1.png')
-#logo2=image.imread(str(sys.argv[2]) + '/kasi_1.png')
-#logo3=image.imread(str(sys.argv[2]) + '/kasi_2.png')
-#addLogo1 = OffsetImage(logo1, zoom=0.13*1.3)
-#addLogo2 = OffsetImage(logo2, zoom=0.2*1.3)
-#addLogo3 = OffsetImage(logo3, zoom=0.2*1.3)
-
 
 if (len(sys.argv)!=4):
-	print ("No parameter file given along command line. Searching current directory for parameter file.")
-	print ("\n")
+	print_cust("No parameter file given along command line. Searching current directory for parameter file.")
 	if (os.path.isfile(parameter_file_string_current)):
-		print ("Parameter file found in the current directory.", str(parameter_file_string_current))
-		print ("\n")
+		print_cust(f"Parameter file found in the current directory: {str(parameter_file_string_current)}")
 		parameter_file_name_final = parameter_file_string_current
 	else:
-		print ("No parameter file (with default name - initial_parameters.dat) found in the current directory.")
-		print ("\n")
+		print_cust("No parameter file (with default name - initial_parameters.dat) found in the current directory.")
 		save_prompt= input("Would you like to provide the name of the parameter file? (y/n) : ")
 		print ("\n")
 		if (save_prompt=='y'):
@@ -208,10 +208,7 @@ if (len(sys.argv)!=4):
 else:
 	parameter_file_name_final = str(sys.argv[1]) + str("/") + str(sys.argv[3])
 	
-print ("Executing script with data from: \n", str(parameter_file_name_final))
-print ("\n")
-sys.stdout.flush()
-time.sleep(0.1)
+print_cust(f"Executing script with data from: {str(parameter_file_name_final)}")
 
 #######################OBTAINING_PARAMETER_INFORMATION#######################
 
@@ -277,7 +274,15 @@ def add_colorbar_lin(mappable):
 
 def get(path, params=None):
 	# make HTTP GET request to path
-	r = requests.get(path, params=params, headers=headers)
+	try:
+		r = requests.get(path, params=params, headers=headers)
+	except requests.exceptions.ConnectionError:
+		try:
+			time.sleep(10)
+			r = requests.get(path, params=params, headers=headers)
+		except Exception as e:
+			print_cust(e)
+	#r = requests.get(path, params=params, headers=headers)
 
 	# raise exception if response code is not HTTP SUCCESS (200)
 	r.raise_for_status()
@@ -355,11 +360,8 @@ def particle_information_halo(sub_prog_url_cust):
 			z2 = sub_prog_subhalo['pos_z'] - f['PartType4']['Coordinates'][:,2]
 			stars = f['PartType4']['Masses'][:]*1e10
 			stellar_age = f['PartType4']['GFM_StellarFormationTime'][:]
-			#print (stellar_age.min(), stellar_age.max())
 			stellar_age_idx = np.searchsorted(scale_factor_original, stellar_age)
 			stellar_age_rev = cosmic_age_original[stellar_age_idx]
-			#stellar_age_rev = stellar_age
-			#print (stellar_age_rev.min(), stellar_age_rev.max())
 			vel_star = f['PartType4']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_star_x = np.zeros([vel_star.shape[0]])
 			vel_star_y = np.zeros([vel_star.shape[0]])
@@ -408,8 +410,8 @@ def particle_information_halo(sub_prog_url_cust):
 			y4 = sub_prog_subhalo['pos_y'] - f['PartType1']['Coordinates'][:,1]
 			z4 = sub_prog_subhalo['pos_z'] - f['PartType1']['Coordinates'][:,2]
 			#dm_mass = f['PartType1']['Masses'][:]*1e10
-			dm_mass = np.zeros_like(x4)
 			vel_dm = f['PartType1']['Velocities'][:] * np.sqrt(scale_factor_tmp)
+			dm_mass = np.ones_like(x4)*1e10
 			vel_dm_x = np.zeros([vel_dm.shape[0]])
 			vel_dm_y = np.zeros([vel_dm.shape[0]])
 			vel_dm_z = np.zeros([vel_dm.shape[0]])
@@ -449,9 +451,7 @@ with open(str(parameter_file_name_final)) as f:
 				d[str(key)] = val
 
 #Print the initial information given
-print (d)
-sys.stdout.flush()
-time.sleep(0.1)
+print_cust(f"{d}")
 
 #######################READ_PARAMETER_FILE#######################
 
@@ -498,10 +498,8 @@ while sub_prog['prog_sfid'] >= -1:
 	else:
 		break
 
-print (sub_prog['snap'])
-print (sub_prog['meta']['url'], '\n')
-sys.stdout.flush()
-time.sleep(0.1)
+print_cust(f"{sub_prog['snap']}")
+print_cust(f"{sub_prog['meta']['url']}")
 sub_new = (sub_prog['meta']['url'])
 sub_prog_url_array = np.chararray([], itemsize=100)
 sub_prog_url_array = np.append(sub_prog_url_array, sub_new.encode('utf-8'))
@@ -547,9 +545,6 @@ while sub_prog['prog_sfid'] > -1:
 	else:
 		break
 
-print ('\n')
-sys.stdout.flush()
-time.sleep(0.1)
 
 #######################FIND_DATA_FROM_ALL_RELEVANT_SNAPSHOTS#######################
 
@@ -559,83 +554,13 @@ time.sleep(0.1)
 #-all the relevant snapshots requested by the user
 
 sub_prog_url_array = np.delete(sub_prog_url_array, 0)
-filename_x = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_y = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_z = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_x2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_y2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_z2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_x3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_y3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_z3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_x4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_y4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename_z4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename1 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename2 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename3 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename4 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename5 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename6 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename7 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename8 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename9 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename10 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename11 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename12 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename13 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename14 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename15 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename16 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename17 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename19 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename18 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename20 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename21 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-filename22 = np.chararray([len(sub_prog_url_array)], itemsize=1000)
-
+expanded_filename_test = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 linkname = np.chararray([len(sub_prog_url_array)], itemsize=1000)
 
 for i in range(len(sub_prog_url_array)):
-	filename_x[i] = (str(str_dir_name) + "pos_x_" + str(i) + ".npy")
-	filename_y[i] = (str(str_dir_name) + "_y_" + str(i) + ".npy")
-	filename_z[i] = (str(str_dir_name) + "_z_" + str(i) + ".npy")
-	filename_x2[i] = (str(str_dir_name) + "_x2_" + str(i) + ".npy")
-	filename_y2[i] = (str(str_dir_name) + "_y2_" + str(i) + ".npy")
-	filename_z2[i] = (str(str_dir_name) + "_z2_" + str(i) + ".npy")
-	filename_x3[i] = (str(str_dir_name) + "_x3_" + str(i) + ".npy")
-	filename_y3[i] = (str(str_dir_name) + "_y3_" + str(i) + ".npy")
-	filename_z3[i] = (str(str_dir_name) + "_z3_" + str(i) + ".npy")
-	filename_x4[i] = (str(str_dir_name) + "_x4_" + str(i) + ".npy")
-	filename_y4[i] = (str(str_dir_name) + "_y4_" + str(i) + ".npy")
-	filename_z4[i] = (str(str_dir_name) + "_z4_" + str(i) + ".npy")
-	filename1[i] = (str(str_dir_name) + "_gas_density_" + str(i) + ".npy")
-	filename2[i] = (str(str_dir_name) + "_gas_ie_" + str(i) + ".npy")
-	filename3[i] = (str(str_dir_name) + "_gas_ea_" + str(i) + ".npy")
-	filename4[i] = (str(str_dir_name) + "_stellar_density_" + str(i) + ".npy")
-	filename5[i] = (str(str_dir_name) + "_vel_gas_x_" + str(i) + ".npy")
-	filename6[i] = (str(str_dir_name) + "_vel_gas_y_" + str(i) + ".npy")
-	filename7[i] = (str(str_dir_name) + "_vel_gas_z_" + str(i) + ".npy")
-	filename8[i] = (str(str_dir_name) + "_vel_star_x_" + str(i) + ".npy")
-	filename9[i] = (str(str_dir_name) + "_vel_star_y_" + str(i) + ".npy")
-	filename10[i] = (str(str_dir_name) + "_vel_star_z_" + str(i) + ".npy")
-	filename11[i] = (str(str_dir_name) + "_dm_mass_" + str(i) + ".npy")
-	filename12[i] = (str(str_dir_name) + "_vel_dm_x_" + str(i) + ".npy")
-	filename13[i] = (str(str_dir_name) + "_vel_dm_y_" + str(i) + ".npy")
-	filename14[i] = (str(str_dir_name) + "_vel_dm_z_" + str(i) + ".npy")
-	filename15[i] = (str(str_dir_name) + "_center_subhalo_x_" + str(i) + ".npy")
-	filename16[i] = (str(str_dir_name) + "_center_subhalo_y_" + str(i) + ".npy")
-	filename20[i] = (str(str_dir_name) + "_center_subhalo_z_" + str(i) + ".npy")
-	filename17[i] = (str(str_dir_name) + "_radius_subhalo_" + str(i) + ".npy")
-	filename19[i] = (str(str_dir_name) + "_stellar_age_" + str(i) + ".npy")
-	filename18[i] = (str(str_dir_name) + "_vyg_counter_" + str(i) + ".npy")
-	filename21[i] = (str(str_dir_name) + "_vyg_stellar_mass_" + str(i) + ".npy")
-	filename22[i] = (str(str_dir_name) + "_vyg_fraction_" + str(i) + ".npy")
-
-	if (path.exists(filename_x[i])):
-		print ("File exists")
-		sys.stdout.flush()
-		time.sleep(0.1)
+	expanded_filename_test[i] = (str(str_dir_name) + "_information_" + str(i) + ".hdf5")
+	if (path.exists(expanded_filename_test[i])):
+		print_cust(f"{expanded_filename_test[i]}: File exists")
 	else:
 		linkname[i] = str(sub_prog_url_array[i].decode("utf-8"))
 		print (linkname[i].decode("utf-8"))
@@ -644,40 +569,41 @@ for i in range(len(sub_prog_url_array)):
 		x, y, z, dens, ie, ea, vel_gas_x, vel_gas_y, vel_gas_z, x2, y2, z2, stars, vel_star_x, vel_star_y, vel_star_z, x3, y3, z3, x4, y4, z4, dm_mass, vel_dm_x, vel_dm_y, vel_dm_z, subhalo_cen_x, subhalo_cen_y, subhalo_cen_z, subhalo_rad, st_age, stellar_mass_vyg, youngfrac_vyg = particle_information_halo(linkname[i].decode("utf-8"))
 		
 		vyg_counter_s = 0
-		np.save(filename_x[i].decode("utf-8"), x)
-		np.save(filename_y[i].decode("utf-8"), y)
-		np.save(filename_z[i].decode("utf-8"), z)
-		np.save(filename_x2[i].decode("utf-8"), x2)
-		np.save(filename_y2[i].decode("utf-8"), y2)
-		np.save(filename_z2[i].decode("utf-8"), z2)
-		np.save(filename_x3[i].decode("utf-8"), x3)
-		np.save(filename_y3[i].decode("utf-8"), y3)
-		np.save(filename_z3[i].decode("utf-8"), z3)
-		np.save(filename_x4[i].decode("utf-8"), x4)
-		np.save(filename_y4[i].decode("utf-8"), y4)
-		np.save(filename_z4[i].decode("utf-8"), z4)
-		np.save(filename1[i].decode("utf-8"), dens)
-		np.save(filename2[i].decode("utf-8"), ie)
-		np.save(filename3[i].decode("utf-8"), ea)
-		np.save(filename4[i].decode("utf-8"), stars)
-		np.save(filename5[i].decode("utf-8"), vel_gas_x)
-		np.save(filename6[i].decode("utf-8"), vel_gas_y)
-		np.save(filename7[i].decode("utf-8"), vel_gas_z)
-		np.save(filename8[i].decode("utf-8"), vel_star_x)
-		np.save(filename9[i].decode("utf-8"), vel_star_y)
-		np.save(filename10[i].decode("utf-8"), vel_star_z)
-		np.save(filename11[i].decode("utf-8"), dm_mass)
-		np.save(filename12[i].decode("utf-8"), vel_dm_x)
-		np.save(filename13[i].decode("utf-8"), vel_dm_y)
-		np.save(filename14[i].decode("utf-8"), vel_dm_z)
-		np.save(filename15[i].decode("utf-8"), subhalo_cen_x)
-		np.save(filename16[i].decode("utf-8"), subhalo_cen_y)
-		np.save(filename20[i].decode("utf-8"), subhalo_cen_z)
-		np.save(filename17[i].decode("utf-8"), subhalo_rad)
-		np.save(filename19[i].decode("utf-8"), st_age)
-		np.save(filename18[i].decode("utf-8"), vyg_counter_s)
-		np.save(filename21[i].decode("utf-8"), stellar_mass_vyg)
-		np.save(filename22[i].decode("utf-8"), youngfrac_vyg)
+		with h5py.File(expanded_filename_test[i], 'a') as hf:
+			hf.create_dataset("pos_x1",  data=x)
+			hf.create_dataset("pos_y1",  data=y)
+			hf.create_dataset("pos_z1",  data=z)
+			hf.create_dataset("pos_x2",  data=x2)
+			hf.create_dataset("pos_y2",  data=y2)
+			hf.create_dataset("pos_z2",  data=z2)
+			hf.create_dataset("pos_x3",  data=x3)
+			hf.create_dataset("pos_y3",  data=y3)
+			hf.create_dataset("pos_z3",  data=z3)
+			hf.create_dataset("pos_x4",  data=x4)
+			hf.create_dataset("pos_y4",  data=y4)
+			hf.create_dataset("pos_z4",  data=z4)
+			hf.create_dataset("gas_density",  data=dens)
+			hf.create_dataset("gas_ie",  data=ie)
+			hf.create_dataset("gas_ea",  data=ea)
+			hf.create_dataset("stellar_density",  data=stars)
+			hf.create_dataset("vel_gas_x",  data=vel_gas_x)
+			hf.create_dataset("vel_gas_y",  data=vel_gas_y)
+			hf.create_dataset("vel_gas_z",  data=vel_gas_z)
+			hf.create_dataset("vel_star_x",  data=vel_star_x)
+			hf.create_dataset("vel_star_y",  data=vel_star_y)
+			hf.create_dataset("vel_star_z",  data=vel_star_z)
+			hf.create_dataset("dm_mass",  data=dm_mass)
+			hf.create_dataset("vel_dm_x",  data=vel_dm_x)
+			hf.create_dataset("vel_dm_y",  data=vel_dm_y)
+			hf.create_dataset("vel_dm_z",  data=vel_dm_z)
+			hf.create_dataset("center_subhalo_x",  data=subhalo_cen_x)
+			hf.create_dataset("center_subhalo_y",  data=subhalo_cen_y)
+			hf.create_dataset("center_subhalo_z",  data=subhalo_cen_z)
+			hf.create_dataset("radius_subhalo",  data=subhalo_rad)
+			hf.create_dataset("stellar_age",  data=st_age)
+			hf.create_dataset("vyg_counter",  data=vyg_counter_s)
+			hf.create_dataset("vyg_stellar_mass",  data=stellar_mass_vyg)
+			hf.create_dataset("vyg_fraction",  data=youngfrac_vyg)
 
 
 #######################GET_PARTICLE_DATA_AND_SAVE_IT_IN_A_FILE#######################
@@ -700,44 +626,41 @@ vyg_counter = []
 vyg_st_mass = []
 vyg_fraction = []
 
+for i in range(0, len(sub_prog_url_array)):
+	with h5py.File(expanded_filename_test[i], 'r') as hf:
+		vyg_counter.append(np.array([hf['vyg_counter'][()]]))
+		
 for i in range(0,len(sub_prog_url_array)):
-	data_x.append(np.array([(np.load(filename_x[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_x4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
-	data_y.append(np.array([(np.load(filename_y[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_y4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
-	data_z.append(np.array([(np.load(filename_z[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_z2[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_z3[i].decode("utf-8"), allow_pickle=True)), (np.load(filename_z4[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
-
-
-	ie = (np.load(filename2[i].decode("utf-8"), allow_pickle=True))
-	ea = (np.load(filename3[i].decode("utf-8"), allow_pickle=True))
-	temp = temperature_estimation(ie, ea)
-	
-	vel_gas_x = (np.load(filename5[i].decode("utf-8"), allow_pickle=True))
-	vel_gas_y = (np.load(filename6[i].decode("utf-8"), allow_pickle=True))
-	vel_gas_z = (np.load(filename7[i].decode("utf-8"), allow_pickle=True))
-	vel_star_x = (np.load(filename8[i].decode("utf-8"), allow_pickle=True))
-	vel_star_y = (np.load(filename9[i].decode("utf-8"), allow_pickle=True))
-	vel_star_z = (np.load(filename10[i].decode("utf-8"), allow_pickle=True))
-	gas_kinematics = np.sqrt(vel_gas_x**2 + vel_gas_y**2 + vel_gas_z**2)
-	radial_vel_gas = (np.load(filename7[i].decode("utf-8"), allow_pickle=True))
-	stellar_kinematics = np.sqrt(vel_star_x**2 + vel_star_y**2 + vel_star_z**2)
-	radial_vel_star = (np.load(filename10[i].decode("utf-8"), allow_pickle=True))
-	mass_dm = (np.load(filename11[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_x = (np.load(filename12[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_y = (np.load(filename13[i].decode("utf-8"), allow_pickle=True))
-	vel_dm_z = (np.load(filename14[i].decode("utf-8"), allow_pickle=True))
-	dm_kinematics = np.sqrt(vel_dm_x**2 + vel_dm_y**2 + vel_dm_z**2)
-
-	subhalo_cen_x.append(np.array([(np.load(filename15[i].decode("utf-8"), allow_pickle=True))]))
-	subhalo_cen_y.append(np.array([(np.load(filename16[i].decode("utf-8"), allow_pickle=True))]))
-	subhalo_cen_z.append(np.array([(np.load(filename20[i].decode("utf-8"), allow_pickle=True))]))
-	subhalo_radius.append(np.array([(np.load(filename17[i].decode("utf-8"), allow_pickle=True))]))
-	vyg_counter.append(np.array([(np.load(filename18[i].decode("utf-8"), allow_pickle=True))]))
-
-	stelar_mass.append(np.array([(np.load(filename4[i].decode("utf-8"), allow_pickle=True))]))
-	stelar_age.append(np.array([(np.load(filename19[i].decode("utf-8"), allow_pickle=True))]))
-	vyg_counter.append(np.array([(np.load(filename18[i].decode("utf-8"), allow_pickle=True))]))
-	#vyg_st_mass.append(np.array([(np.load(filename21[i].decode("utf-8"), allow_pickle=True))]))
-	#vyg_fraction.append(np.array([(np.load(filename22[i].decode("utf-8"), allow_pickle=True))]))
-	data_real.append(np.array([(np.load(filename1[i].decode("utf-8"), allow_pickle=True)), temp, (np.load(filename4[i].decode("utf-8"), allow_pickle=True)), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, stelar_age, (np.load(filename21[i].decode("utf-8"), allow_pickle=True)), (np.load(filename22[i].decode("utf-8"), allow_pickle=True))], dtype="object"))
+	idx_cust = i
+	with h5py.File(expanded_filename_test[idx_cust], 'r') as hf:
+		data_x.append(np.array([np.array(hf['pos_x1'][()]), np.array(hf['pos_x2'][()]), np.array(hf['pos_x3'][()]), np.array(hf['pos_x4'][()])], dtype="object"))
+		data_y.append(np.array([np.array(hf['pos_y1'][()]), np.array(hf['pos_y2'][()]), np.array(hf['pos_y3'][()]), np.array(hf['pos_y4'][()])], dtype="object"))
+		data_z.append(np.array([np.array(hf['pos_z1'][()]), np.array(hf['pos_z2'][()]), np.array(hf['pos_z3'][()]), np.array(hf['pos_z4'][()])], dtype="object"))
+		ie = (hf['gas_ie'][()])
+		ea = (hf['gas_ea'][()])
+		temp = temperature_estimation(ie, ea)
+		vel_gas_x = (hf['vel_gas_x'][()])
+		vel_gas_y = (hf['vel_gas_y'][()])
+		vel_gas_z = (hf['vel_gas_z'][()])
+		vel_star_x = (hf['vel_star_x'][()])
+		vel_star_y = (hf['vel_star_y'][()])
+		vel_star_z = (hf['vel_star_z'][()])
+		gas_kinematics = np.sqrt(vel_gas_x**2 + vel_gas_y**2 + vel_gas_z**2)
+		radial_vel_gas =  (hf['vel_gas_z'][()])
+		stellar_kinematics = np.sqrt(vel_star_x**2 + vel_star_y**2 + vel_star_z**2)
+		radial_vel_star = (hf['vel_star_z'][()])
+		mass_dm = (hf['dm_mass'][()])
+		vel_dm_x = (hf['vel_dm_x'][()])
+		vel_dm_y = (hf['vel_dm_y'][()])
+		vel_dm_z = (hf['vel_dm_z'][()])
+		dm_kinematics = np.sqrt(vel_dm_x**2 + vel_dm_y**2 + vel_dm_z**2)
+		subhalo_cen_x.append(np.array([(hf['center_subhalo_x'][()])]))
+		subhalo_cen_y.append(np.array([(hf['center_subhalo_y'][()])]))
+		subhalo_cen_z.append(np.array([(hf['center_subhalo_z'][()])]))
+		subhalo_radius.append(np.array([(hf['radius_subhalo'][()])]))
+		stelar_mass.append(np.array([(hf['stellar_density'][()])]))
+		stelar_age.append(np.array([(hf['stellar_age'][()])]))
+		data_real.append(np.array([(hf['gas_density'][()]), temp, (hf['stellar_density'][()]), gas_kinematics, stellar_kinematics, radial_vel_gas, radial_vel_star, mass_dm, dm_kinematics, (hf['stellar_age'][()]), (hf['vyg_stellar_mass'][()]), (hf['vyg_fraction'][()])], dtype="object"))
 
 #######################LOAD_PARTICLE_INFORMATION_FROM_FILE_FOR_PREOCESSING#######################
 
@@ -751,13 +674,6 @@ time_val_init = snap_array.min()
 window_size_init = int(d['init_zoom_val'])
 fig, ax = plt.subplots()
 ax.cla()
-
-#ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-#ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-#ab3 = AnnotationBbox(addLogo3, (1.3, 0.4), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-#ax.add_artist(ab1)
-#ax.add_artist(ab2)
-#ax.add_artist(ab3)
 
 rax = plt.axes(d['pos_check_button_for_showing_rings_and_bh'])
 axtime = plt.axes(d['pos_slider_for_moving_through_snapshots'])
@@ -806,16 +722,6 @@ def put_time_label(time_val, ax, window_size):
 	ax.set_ylabel(ylabel_str)
 	plt.draw()
 
-'''
-def add_label(ax):
-	ab1 = AnnotationBbox(addLogo1, (1.3, 0.8), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-	ab2 = AnnotationBbox(addLogo2, (1.3, 0.6), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-	ab3 = AnnotationBbox(addLogo3, (1.3, 0.4), xycoords='axes fraction', box_alignment=(1.1,-0.1))
-	ax.add_artist(ab1)
-	ax.add_artist(ab2)
-	ax.add_artist(ab3)
-'''
-
 check = CheckButtons(rax, ('Black Hole', 'VYG Ring'), (True, True))
 def bh_func(im2, circle2):
 	def func(label):
@@ -826,15 +732,13 @@ def bh_func(im2, circle2):
 		fig.canvas.draw_idle()
 	check.on_clicked(func)
 
-print (len(data_x[mv][axis_to_use]))
-print (len(data_y[mv][axis_to_use]))
-print (len(data_z[mv][axis_to_use]))
-print (len(data_real[mv][str_for_param_selection]))
+if (str_for_param_selection==2 or str_for_param_selection==9):
+	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], statistic_val=np.nansum, plot_type='log')
+else:
+	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type='log')
 
-plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type='log')
 im2, circle2 = extra_plotting(ax, mv, subhalo_cen_x[mv][vyg_counter[mv]], subhalo_cen_y[mv][vyg_counter[mv]], subhalo_cen_z[mv][vyg_counter[mv]], subhalo_radius[mv][vyg_counter[mv]], data_x[mv][2], data_y[mv][2], data_z[mv][2])
 put_time_label(time_val_init, ax, window_size_init)
-#add_label(ax)
 bh_func(im2, circle2)
 
 
@@ -855,11 +759,13 @@ def update(val):
     phi_updated = float(sphi.val)
     ax.cla()
     im_cl.remove()
-    plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
-    #im2, circle2 = extra_plotting(ax, mv)
+    if (str_for_param_selection==2 or str_for_param_selection==9):
+        plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated, statistic_val=np.nansum)
+    else:
+        plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+
     im2, circle2 = extra_plotting(ax, mv, subhalo_cen_x[mv][vyg_counter[mv]], subhalo_cen_y[mv][vyg_counter[mv]], subhalo_cen_z[mv][vyg_counter[mv]], subhalo_radius[mv][vyg_counter[mv]], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
     put_time_label(int(stime.val), ax, float(szoom.val))
-    add_label(ax)
     bh_func(im2, circle2)
 fig.canvas.draw_idle()
 
@@ -909,11 +815,13 @@ def hzfunc9(label9):
 	phi_updated = float(sphi.val)
 	ax.cla()
 	im_cl.remove()
-	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
-	#im2, circle2 = extra_plotting(ax, mv)
+	if (str_for_param_selection==2 or str_for_param_selection==9):
+		plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated, statistic_val=np.nansum)
+	else:
+		plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+
 	im2, circle2 = extra_plotting(ax, mv, subhalo_cen_x[mv][vyg_counter[mv]], subhalo_cen_y[mv][vyg_counter[mv]], subhalo_cen_z[mv][vyg_counter[mv]], subhalo_radius[mv][vyg_counter[mv]], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax, float(szoom.val))
-	#add_label(ax)
 	bh_func(im2, circle2)
 radio9.on_clicked(hzfunc9)
 
@@ -936,11 +844,13 @@ def hzfunc7(label7):
 	phi_updated = float(sphi.val)
 	ax.cla()
 	im_cl.remove()
-	plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
-	#im2, circle2 = extra_plotting(ax, mv)
+	if (str_for_param_selection==2 or str_for_param_selection==9):
+		plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated, statistic_val=np.nansum)
+	else:
+		plot_main(ax, data_x[mv][axis_to_use], data_y[mv][axis_to_use], data_z[mv][axis_to_use], data_real[mv][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+
 	im2, circle2 = extra_plotting(ax, mv, subhalo_cen_x[mv][vyg_counter[mv]], subhalo_cen_y[mv][vyg_counter[mv]], subhalo_cen_z[mv][vyg_counter[mv]], subhalo_radius[mv][vyg_counter[mv]], data_x[mv][2], data_y[mv][2], data_z[mv][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax, float(szoom.val))
-	#add_label(ax)
 	bh_func(im2, circle2)
 radio7.on_clicked(hzfunc7)
 
@@ -978,18 +888,19 @@ def ani_frame():
 	binsize_updated = int(10**(float(sbinsize.val)))
 	theta_updated = float(stheta.val)
 	phi_updated = float(sphi.val)
-
 	movie_name_count=1
 	movie_name = str('movie_') + str(radio7.value_selected) + str('_zoom_') + str(int(szoom.val)) + str('_count_') + str(movie_name_count) + str('.mp4')
 	while path.exists(movie_name):
 		movie_name_count+=1
 		movie_name = str('movie_') + str(radio7.value_selected) + str('_zoom_') + str(int(szoom.val)) + str('_count_') + str(movie_name_count) + str('.mp4')
 
-	im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
-	#im2_new, circle2_new = extra_plotting(ax_new, mv_new)
+	if (str_for_param_selection==2 or str_for_param_selection==9):
+		im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated, statistic_val=np.nansum)
+	else:
+		im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+
 	im2_new, circle2_new = extra_plotting(ax_new, mv_new, subhalo_cen_x[mv_new][vyg_counter[mv_new]], subhalo_cen_y[mv_new][vyg_counter[mv_new]], subhalo_cen_z[mv_new][vyg_counter[mv_new]], subhalo_radius[mv_new][vyg_counter[mv_new]], data_x[mv_new][2], data_y[mv_new][2], data_z[mv_new][2], phi=phi_updated, theta=theta_updated)
 	put_time_label(int(stime.val), ax_new, float(szoom.val))
-	#add_label(ax_new)
 	bh_func(im2_new, circle2_new)
 	fig_new.set_size_inches([5,5])
 	title_string = str(d['simulation']) + str('_') + str(d['snapshot']) + str('_') + str(d['galaxyid'])
@@ -1001,11 +912,14 @@ def ani_frame():
 		mv_new = int(n - snap_array.min())
 		ax_new.cla()
 		im_cl_new.remove()
-		im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
-		#im2_new, circle2_new = extra_plotting(ax_new, mv_new)
+
+		if (str_for_param_selection==2 or str_for_param_selection==9):
+			im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated, statistic_val=np.nansum)
+		else:
+			im_new = plot_main_movie(ax_new, data_x[mv_new][axis_to_use], data_y[mv_new][axis_to_use], data_z[mv_new][axis_to_use], data_real[mv_new][str_for_param_selection], plot_type=colorbar_scaling, bin_num_x=binsize_updated, bin_num_y=binsize_updated, phi=phi_updated, theta=theta_updated)
+
 		im2_new, circle2_new = extra_plotting(ax_new, mv_new, subhalo_cen_x[mv_new][vyg_counter[mv_new]], subhalo_cen_y[mv_new][vyg_counter[mv_new]], subhalo_cen_z[mv_new][vyg_counter[mv_new]], subhalo_radius[mv_new][vyg_counter[mv_new]], data_x[mv_new][2], data_y[mv_new][2], data_z[mv_new][2], phi=phi_updated, theta=theta_updated)
 		put_time_label(int(n), ax_new, float(szoom.val))
-		#add_label(ax_new)
 		bh_func(im2_new, circle2_new)
 		return im_new,
 
@@ -1019,13 +933,9 @@ def ani_frame():
 
 movie_button = Button(movie_button_ax, 'Make Movie')
 def make_movie(event):
-	print ('Making movie...')
-	sys.stdout.flush()
-	time.sleep(0.1)
+	print_cust('Making movie...')
 	ani_frame()
-	print ('Movie saved...')
-	sys.stdout.flush()
-	time.sleep(0.1)
+	print_cust('Movie saved...')
 movie_button.on_clicked(make_movie)
 
 #######################BUTTON_TO_CREATE_A_MOVIE#######################
@@ -1053,9 +963,9 @@ plt.show()
 x = os.listdir()
 for i in x:
 	if i.endswith(".hdf5"):
-		print('deleting...', i)
+		print_cust("deleting..., {i}")
 		string_for_deleting_all_cutouts = str('rm ') + i
-		print (string_for_deleting_all_cutouts)
+		print_cust(f"{string_for_deleting_all_cutouts}")
 		os.system(string_for_deleting_all_cutouts)
 
 #######################DELETE_ALL_CUTOUTS#######################
