@@ -360,8 +360,9 @@ def particle_information_halo(sub_prog_url_cust):
 			z2 = sub_prog_subhalo['pos_z'] - f['PartType4']['Coordinates'][:,2]
 			stars = f['PartType4']['Masses'][:]*1e10
 			stellar_age = f['PartType4']['GFM_StellarFormationTime'][:]
-			stellar_age_idx = np.searchsorted(scale_factor_original, stellar_age)
-			stellar_age_rev = cosmic_age_original[stellar_age_idx]
+			stellar_age_rev = cosmo.age((1./stellar_age)-1.).value
+			#stellar_age_idx = np.searchsorted(scale_factor_original, stellar_age)
+			#stellar_age_rev = cosmic_age_original[stellar_age_idx]
 			vel_star = f['PartType4']['Velocities'][:] * np.sqrt(scale_factor_tmp)
 			vel_star_x = np.zeros([vel_star.shape[0]])
 			vel_star_y = np.zeros([vel_star.shape[0]])
